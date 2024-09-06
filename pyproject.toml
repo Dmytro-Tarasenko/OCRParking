@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "untitled folder"
+version = "0.1.0"
+description = ""
+authors = ["Maksym Melnyk <maks.melnyk.94@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = {extras = ["all"], version = "^0.113.0"}
+uvicorn = "^0.30.6"
+pyjwt = "^2.9.0"
+asyncpg = "^0.29.0"
+sqlalchemy = {extras = ["asyncio"], version = "^2.0.34"}
+alembic = "^1.13.2"
+pydantic = "^2.9.0"
+psycopg2-binary = "^2.9.9"
+python-jose = "^3.3.0"
+passlib = "^1.7.4"
+python-dotenv = "^1.0.1"
+pydantic-settings = "^2.4.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
