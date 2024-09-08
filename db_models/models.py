@@ -38,6 +38,8 @@ class ParkingHistory(Base):
     car = relationship('Car', back_populates='parking_history')
 
 
+
+
 class Billing(Base):
     __tablename__ = 'billing'
 
