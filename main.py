@@ -1,7 +1,13 @@
 import uvicorn
 from fastapi import FastAPI
 
+from routes.auth_routes import router as auth_router
+# from admin.routes import router as admin_router
+
 app = FastAPI()
+
+app.include_router(auth_router)
+# app.include_router(admin_router)
 
 
 @app.get("/")
