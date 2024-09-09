@@ -89,8 +89,7 @@ class Authentication:
                                             user_login.password,
                                             db)
         if not user:
-            raise HTTPException(status_code=400,
-                                detail="Invalid username or password")
+            return
 
         access_token = self.create_access_token(data={"sub": user.username})
         refresh_token = self.create_refresh_token(data={"sub": user.username})

@@ -59,7 +59,9 @@ async def login(response: Response,
                            password=password)
     result = await auth.login(response, user_login, db)
     if not result:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
+        return templates.TemplateResponse('auth/login_form.html',
+                                          context={'request': request,
+                                                   'error': 'User not found.'})
     return result
 
 
