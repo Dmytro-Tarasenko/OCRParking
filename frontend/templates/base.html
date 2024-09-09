@@ -10,6 +10,8 @@
     <script src="{{ url_for ('static', path='htmx.min.js')}}"></script>
 </head>
 <body>
+  <header>
+    <h1>Система управління паркуванням</h1>
 <nav>
       <ul>
         <li>
@@ -29,12 +31,13 @@
         <li><a href="#">{{ user.username }}</a></li>
         <li><a href="#">Вийти</a></li>
           {% else %}
-        <li><a href="#">Увійти</a></li>
+        <li><a href="{{ url_for('get_login_form') }}">Увійти</a></li>
         <li><a href="#">Зареєструватись</a></li>
         {% endif %}
       </ul>
     </div>
   </nav>
+  </header>
   <main>
     {% block content %}{% endblock %}
   </main>
