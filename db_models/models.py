@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, Float, DateTime
 from sqlalchemy.orm import relationship
-from db import Base
+from db_models.db import Base
 from datetime import datetime
 
 
@@ -36,8 +36,6 @@ class ParkingHistory(Base):
     parking_cost = Column(Float)
     bill_id = Column(Integer, ForeignKey('billing.id'))
     car = relationship('Car', back_populates='parking_history')
-
-
 
 
 class Billing(Base):

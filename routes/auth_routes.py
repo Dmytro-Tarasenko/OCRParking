@@ -1,4 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status, Request
+from fastapi import (APIRouter,
+                     Depends,
+                     HTTPException,
+                     Response,
+                     status,
+                     Request)
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from routes.auth import Authentication

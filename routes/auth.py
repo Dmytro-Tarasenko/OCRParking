@@ -7,7 +7,7 @@ from sqlalchemy.future import select
 
 from schemas.auth import UserLogin
 from db_models.models import User as UserModel
-from db_models.settings import settings
+from settings import settings
 
 
 class Authentication:

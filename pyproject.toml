@@ -1,8 +1,13 @@
 [tool.poetry]
-name = "untitled folder"
+name = "ocrparking"
 version = "0.1.0"
-description = ""
-authors = ["Maksym Melnyk <maks.melnyk.94@gmail.com>"]
+description = "Automated parking billing system powered by computer vision (car license plate recognition)"
+authors = ["Dmytro Tarasenko <ug.dotenko@gmail.com>",
+    "Sergiy Chabanchuk <chabanchuk@gmail.com>",
+    "Maksym Melnyk <maks.melnyk.94@gmail.com>",
+    "Angelika Kodlubovska <kodanzelika@gmail.com>",
+]
+license = "GNU GENERAL PUBLIC LICENSE"
 readme = "README.md"
 
 [tool.poetry.dependencies]
