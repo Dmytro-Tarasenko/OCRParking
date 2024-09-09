@@ -1,31 +1,8 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Система управління паркуванням</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <header>
-        <h1>Система управління паркуванням</h1>
-        <nav>
-            <ul>
-                <li><a href="#">Головна</a></li>
-                <li><a href="#">Увійти</a></li>
-                <li><a href="#">Зареєструватися</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
+{% extends "base.html" %}}
+{% block content %}
         <section class="hero">
             <h2>Ласкаво просимо до системи управління паркуванням</h2>
             <p>Автоматичне розпізнавання номерних знаків і відстеження паркування.</p>
             <a href="#" class="button">Дізнатися більше</a>
         </section>
-    </main>
-    <footer>
-        <p>&copy; 2024 Система управління паркуванням. Всі права захищені.</p>
-    </footer>
-</body>
-</html>
+{% endblock %}
