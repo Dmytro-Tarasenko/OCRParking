@@ -18,9 +18,8 @@
             <a href="{{ url_for('index')}}">Головна</a>
         </li>
         {% if user %}
-        <li><a href="#">Мої автомобілі</a></li>
-        <li><a href="#">Історія паркувань</a></li>
-          {% if user.role == 'admin' %}
+        <li><a href="{{ url_for('get_user_page') }}">Моя сторінка</a></li>
+          {% if user.is_admin %}
           <li><a href="#">Адміністрування</a></li>
           {% endif %}
           {% endif %}
@@ -29,7 +28,7 @@
       <ul>
           {% if user %}
         <li><a href="#">{{ user.username }}</a></li>
-        <li><a href="#">Вийти</a></li>
+        <li><a href="{{ url_for('logout_user')}}">Вийти</a></li>
           {% else %}
         <li><a href="{{ url_for('get_login_form') }}">Увійти</a></li>
         <li><a href="{{ url_for('get_register_form')}}">Зареєструватись</a></li>

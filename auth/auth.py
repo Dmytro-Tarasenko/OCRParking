@@ -33,7 +33,7 @@ class Authentication:
                             ) -> str:
         to_encode = data.copy()
         expire = (
-            datetime.now(datetime.UTC)  
+            datetime.now()
             + (expires_delta 
                 or timedelta(minutes=settings.access_token_expire_minutes))
             )
@@ -48,7 +48,7 @@ class Authentication:
                              ) -> str:
         to_encode = data.copy()
         expire = (
-            datetime.now(datetime.UTC)
+            datetime.now()
             + (expires_delta 
                 or timedelta(minutes=settings.refresh_token_expire_days))
             )
@@ -100,7 +100,7 @@ class Authentication:
         response.set_cookie(key="refresh_token",
                             value=refresh_token,
                             httponly=True)
-
+        
         return {"access_token": access_token,
                 "refresh_token": refresh_token}
 

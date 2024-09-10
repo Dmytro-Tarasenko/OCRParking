@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from db_models.db import get_session
 from auth.auth import Authentication
+from schemas.auth import User
 
 auth = Authentication()
 
@@ -30,12 +31,20 @@ async def index(
 ) -> Any:
     user = None
     if access_token:
-        user = 'user'
+        username = auth.get_current_user(request)
+        user = User(username=username)
     return templates.TemplateResponse('index.html', {'request': request,
                                                      'user': user})
+
 
 @router.get('/about')
 async def about(
     request: Request,
+    access_token: Annotated[str | None, Cookie()] = None,
 ):
-    return templates.TemplateResponse('about.html', {'request': request})
+    user = None
+    if access_token:
+        username = auth.get_current_user(request)
+        user = User(username=username)
+    return templates.TemplateResponse('about.html', {'request': request,
+                                                     'user': user})

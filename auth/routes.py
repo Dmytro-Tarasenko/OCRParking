@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 from fastapi import (APIRouter,
                      Depends,
                      HTTPException,
@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth.auth import Authentication
 # from db_models.models import User as UserModel
 from db_models.orms import UserORM
-from schemas.auth import UserLogin, UserCreate
+from schemas.auth import UserLogin, UserCreate, User
 from db_models.db import get_session
 
 from frontend.routes import templates
@@ -82,8 +82,14 @@ async def login(response: Response,
     if not result:
         return templates.TemplateResponse('auth/login_form.html',
                                           context={'request': request,
-                                                   'error': 'User not found.'})
-    return result
+                                                   'error': 'User not found or invalid credentials'})
+    user = User(username=username)
+    ret = templates.TemplateResponse('user/user.html',
+                                     {'request': request,
+                                      'user': user})
+    ret.set_cookie(key='access_toke', value=result['access_token'])
+    ret.set_cookie(key='refresh_toke', value=result['refresh_token'])
+    return ret
 
 
 @router.post("/refresh")
@@ -103,8 +109,14 @@ async def admin_route(request: Request, db: AsyncSession = Depends(get_session))
     return {"msg": f"Hello, {user.username}. You are an admin!"}
 
 
-@router.post("/logout", response_model=dict)
+@router.get("/logout", response_model=dict)
 async def logout_user(
-        response: Response):
-
-    return await auth.logout(response)
+        response: Response,
+        request: Request
+        ) -> Any:
+    res = await auth.logout(response)
+    user = None
+    if res:
+        return templates.TemplateResponse('index.html',
+                                          {'request': request,
+                                           'user': user})
