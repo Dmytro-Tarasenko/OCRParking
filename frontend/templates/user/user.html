@@ -1,36 +1,73 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Кабінет користувача</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <header>
-        <h1>Кабінет користувача</h1>
-        <nav>
-            <ul>
-                <li><a href="#">Мій профіль</a></li>
-                <li><a href="#">Історія паркування</a></li>
-                <li><a href="#">Вийти</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
+{% extends "base.html" %}
+{% block content %}
         <section>
-            <h2>Мій номерний знак</h2>
-            <p>Інформація про ваш номерний знак та статус паркування.</p>
+            <h2>Мої автомобілі</h2>
+            <p>Перелік автомобілів</p>
             <!-- Відображення даних про номерний знак та статус -->
+            <a href="#" class="button">Додати автомобіль</a>
+            <div>
+                <table hx-indicator=".htmx-indicator">
+                    <thead>
+                        <tr>
+                            <th>№ з/п</th>
+                            <th>Номерний знак</th>
+                            <th>Статус</th>
+                            <th>Дія</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th>1</th>
+                            <th>AA1234BB</th>
+                            <th>Виїзд</th>
+                            <th><ul>
+                                    <li>Історі паркувань</li>
+                                    <li>Рахунки</li>
+                                    <li>Видалити</li>
+                                </ul>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th>2</th>
+                            <th>AX5544АА</th>
+                            <th>Виїзд</th>
+                            <th><ul>
+                                    <li>Історі паркувань</li>
+                                    <li>Рахунки</li>
+                                    <li>Видалити</li>
+                                </ul>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th>3</th>
+                            <th>DI6677JА</th>
+                            <th>На парковці</th>
+                            <th><ul>
+                                    <li>Історі паркувань</li>
+                                    <li>Рахунки</li>
+                                    <li>Видалити</li>
+                                </ul>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th>4</th>
+                            <th>BH1010YA</th>
+                            <th>На парковці</th>
+                            <th><ul>
+                                    <li>Історі паркувань</li>
+                                    <li>Рахунки</li>
+                                    <li>Видалити</li>
+                                </ul>
+                            </th>
+                        </tr>
+                    </tbody>
+                </table>
+                <center><img class="htmx-indicator" width="60" src="{{ url_for ('static', path='img/bars.svg')}}"></center>
+            </div>
         </section>
         <section>
             <h2>Історія паркування</h2>
             <p>Перегляньте історію своїх паркувань.</p>
             <!-- Таблиця з історією паркування -->
         </section>
-    </main>
-    <footer>
-        <p>&copy; 2024 Система управління паркуванням. Всі права захищені.</p>
-    </footer>
-</body>
-</html>
+{% endblock %}

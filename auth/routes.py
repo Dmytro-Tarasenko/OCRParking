@@ -40,10 +40,10 @@ async def register_user(request: Request,
     user = UserCreate(username=username,
                       password=password,
                       email=email)
-    res = await db.execute(
-        select(UserORM).where(UserORM.username == user.username)
-        )
-    existing_user = res.scalar()
+    stmnt = select(UserORM).where(UserORM.username == user.username)
+    res = await db.execute(stmnt)
+    existing_user = res.scalars().first()
+
     if existing_user:
         return templates.TemplateResponse(
             'auth/register_form.html',
@@ -54,10 +54,12 @@ async def register_user(request: Request,
     new_user = UserORM(username=user.username,
                        email=user.email,
                        password=hashed_password
-                    )
+                       )
     db.add(new_user)
     await db.commit()
-    return {"msg": "User registered successfully"}
+    return templates.TemplateResponse('auth/registration_success.html',
+                                      {'request': request,
+                                       'username': new_user.username})
 
 
 @router.get("/login")
