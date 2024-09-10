@@ -10,7 +10,8 @@ from fastapi import (APIRouter,
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from auth.auth import Authentication
-from db_models.models import User as UserModel
+# from db_models.models import User as UserModel
+from db_models.orms import UserORM
 from schemas.auth import UserLogin, UserCreate
 from db_models.db import get_session
 
@@ -30,19 +31,30 @@ async def get_register_form(response: Response,
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
-async def register_user(user: UserCreate,
+async def register_user(request: Request,
+                        username: Annotated[str, Form()],
+                        email: Annotated[str, Form()],
+                        password: Annotated[str, Form()],
                         db: AsyncSession = Depends(get_session)
                         ):
-    existing_user = await db.execute(select(UserModel).where(UserModel.username == user.username))
-    if existing_user.scalar():
-        raise HTTPException(status_code=400,
-                            detail="Username already registered")
+    user = UserCreate(username=username,
+                      password=password,
+                      email=email)
+    res = await db.execute(
+        select(UserORM).where(UserORM.username == user.username)
+        )
+    existing_user = res.scalar()
+    if existing_user:
+        return templates.TemplateResponse(
+            'auth/register_form.html',
+            context={'request': request,
+                     'error': 'Username already registered'})
 
     hashed_password = auth.get_password_hash(user.password)
-    new_user = UserModel(username=user.username,
-                         email=user.email,
-                         password=hashed_password
-                         )
+    new_user = UserORM(username=user.username,
+                       email=user.email,
+                       password=hashed_password
+                    )
     db.add(new_user)
     await db.commit()
     return {"msg": "User registered successfully"}

@@ -33,3 +33,9 @@ async def index(
         user = 'user'
     return templates.TemplateResponse('index.html', {'request': request,
                                                      'user': user})
+
+@router.get('/about')
+async def about(
+    request: Request,
+):
+    return templates.TemplateResponse('about.html', {'request': request})

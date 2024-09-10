@@ -15,7 +15,7 @@
 <nav>
       <ul>
         <li>
-            <a href="#">Головна</a>
+            <a href="{{ url_for('index')}}">Головна</a>
         </li>
         {% if user %}
         <li><a href="#">Мої автомобілі</a></li>
@@ -24,7 +24,7 @@
           <li><a href="#">Адміністрування</a></li>
           {% endif %}
           {% endif %}
-        <li><a href="#">Про застосунок</a></li>
+        <li><a href="{{ url_for('about')}}">Про застосунок</a></li>
       </ul>
       <ul>
           {% if user %}
@@ -32,7 +32,7 @@
         <li><a href="#">Вийти</a></li>
           {% else %}
         <li><a href="{{ url_for('get_login_form') }}">Увійти</a></li>
-        <li><a href="#">Зареєструватись</a></li>
+        <li><a href="{{ url_for('get_register_form')}}">Зареєструватись</a></li>
         {% endif %}
       </ul>
     </div>
