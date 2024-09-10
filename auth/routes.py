@@ -22,6 +22,12 @@ router = APIRouter(prefix="/auth",
                    include_in_schema=False)
 
 
+@router.get('/register')
+async def get_register_form(response: Response,
+                            request: Request):
+    return templates.TemplateResponse('auth/register_form.html',
+                                      context={'request': request})
+
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 async def register_user(user: UserCreate,
@@ -40,6 +46,7 @@ async def register_user(user: UserCreate,
     db.add(new_user)
     await db.commit()
     return {"msg": "User registered successfully"}
+
 
 @router.get("/login")
 async def get_login_form(response: Response,
