@@ -1,9 +1,11 @@
 from datetime import datetime, timedelta
+
 from jose import jwt, JWTError
 from passlib.context import CryptContext
-from fastapi import HTTPException, Response, Request, security
+from fastapi import Response, Request, security
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from starlette.authentication import AuthenticationError
 
 from schemas.auth import UserLogin
 from db_models.models import User as UserModel
@@ -12,8 +14,7 @@ from settings import settings
 
 class Authentication:
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-    oauth2_schema = security.OAuth2PasswordBearer(tokenUrl="token")
-    # oauth2_schema = security.OAuth2PasswordBearer(tokenUrl="/auth/login")
+    oauth2_scheme = security.OAuth2PasswordBearer(tokenUrl="auth/login")
 
     def get_password_hash(self, password: str) -> str:
         return self.pwd_context.hash(password)
@@ -37,11 +38,12 @@ class Authentication:
         try:
             payload = jwt.decode(token, secret_key, algorithms=[settings.ALGORITHM])
             username: str = payload.get("sub")
+
             if username is None:
-                raise HTTPException(status_code=401, detail="Could not validate credentials")
+                raise AuthenticationError("Could not validate credentials")
             return username
-        except JWTError:
-            raise HTTPException(status_code=401, detail="Invalid token")
+        except JWTError as e:
+            raise AuthenticationError("Invalid or expired token") from e
 
     async def authenticate_user(self, username: str, password: str, db: AsyncSession) -> UserModel | None:
         result = await db.execute(select(UserModel).where(UserModel.username == username))
@@ -51,48 +53,81 @@ class Authentication:
         return None
 
     async def login(self, response: Response, user_login: UserLogin, db: AsyncSession) -> dict:
-        user = await self.authenticate_user(user_login.username, user_login.password, db)
-        if not user:
-            raise HTTPException(status_code=400, detail="Invalid username or password")
+        try:
+            user = await self.authenticate_user(user_login.username, user_login.password, db)
+            if not user:
+                raise AuthenticationError("Invalid username or password")
 
-        access_token = self.create_access_token(data={"sub": user.username})
-        refresh_token = self.create_refresh_token(data={"sub": user.username})
+            access_token = self.create_access_token(data={"sub": user.username})
+            refresh_token = self.create_refresh_token(data={"sub": user.username})
 
-        response.set_cookie(key="access_token", value=access_token, httponly=True)
-        response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
+            response.set_cookie(key="access_token", value=access_token, httponly=True)
+            response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
 
-        return {"access_token": access_token, "refresh_token": refresh_token}
+            return {"access_token": access_token, "refresh_token": refresh_token}
+
+        except AuthenticationError as e:
+            return {"error": str(e)}
 
     async def refresh_token(self, response: Response, refresh_token: str) -> dict:
+        try:
+            if refresh_token.startswith("Bearer "):
+                refresh_token = refresh_token.split(" ")[1]
 
-        username = self.decode_token(refresh_token, settings.REFRESH_SECRET)
-        new_access_token = self.create_access_token(data={"sub": username})
-        new_refresh_token = self.create_refresh_token(data={"sub": username})
+            username = self.decode_token(refresh_token, settings.REFRESH_SECRET)
 
-        response.set_cookie(key="access_token", value=new_access_token, httponly=True)
-        response.set_cookie(key="refresh_token", value=new_refresh_token, httponly=True)
+            new_access_token = self.create_access_token(data={"sub": username})
+            new_refresh_token = self.create_refresh_token(data={"sub": username})
 
-        return {"access_token": new_access_token, "refresh_token": new_refresh_token}
+            response.set_cookie(key="access_token", value=new_access_token, httponly=True)
+            response.set_cookie(key="refresh_token", value=new_refresh_token, httponly=True)
+
+            return {"access_token": new_access_token, "refresh_token": new_refresh_token}
+
+        except Exception as e:
+            return {"error": "Invalid or expired refresh token"}
 
     def get_current_user(self, request: Request) -> str:
         token = request.cookies.get("access_token")
-        if not token:
-            raise HTTPException(status_code=401, detail="Not authenticated")
-        return self.decode_token(token, settings.SECRET)
 
-    async def is_admin(self, request: Request, db: AsyncSession) -> UserModel:
+        if not token:
+            return "Not authenticated"
+
+        try:
+            return self.decode_token(token, settings.SECRET)
+        except Exception as e:
+            return "Invalid token"
+
+    async def is_admin(self, request: Request, db: AsyncSession) -> dict[str, str] | UserModel:
         token = request.cookies.get("access_token")
         if not token:
-            raise HTTPException(status_code=401, detail="Not authenticated")
+            return {"error": "Not authenticated. Token missing."}
 
-        username = self.decode_token(token, settings.SECRET)
+        if token.startswith("Bearer "):
+            token = token.split(" ")[1]
+
+        try:
+            username = self.decode_token(token, settings.SECRET)
+        except Exception as e:
+            return {"error": "Invalid token"}
+
         result = await db.execute(select(UserModel).where(UserModel.username == username))
         user = result.scalar()
-        if not user or not user.is_admin:
-            raise HTTPException(status_code=403, detail="Not enough privileges")
+
+        if not user:
+            return {"error": "User not found"}
+
+        if not user.is_admin:
+            return {"error": "Not enough privileges. Admin rights required."}
+
         return user
 
-    async def logout(self, response: Response):
+    async def logout(self, request: Request, response: Response):
+        access_token = request.cookies.get("access_token")
+        refresh_token = request.cookies.get("refresh_token")
+
+        if not access_token and not refresh_token:
+            return {"detail": "You are already logged out."}
 
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")
