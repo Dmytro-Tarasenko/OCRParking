@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content %}
+<div>
+    <form action="/user/add_car" method="post">
+    <h1>Please enter car license plate</h1>
+    <div>
+      <input type="text" id="floatingInput" name="car_plate" placeholder="Carplate" required>
+      <label for="floatingInput">Carplate</label>
+    </div>
+    {% if error %}
+        <div role="alert">
+        {{ error }}
+        </div>
+    {% endif %}
+    <div>
+    <button type="submit">Add car</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

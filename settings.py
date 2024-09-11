@@ -24,6 +24,8 @@ class EnvSettings(BaseSettings):
     postgres_db: str
     postgres_port: int
     database_url: str
+    access_token_expire_minutes: int
+    refresh_token_expire_days: int
 
 
 # production environment
