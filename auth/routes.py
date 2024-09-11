@@ -87,8 +87,8 @@ async def login(response: Response,
     ret = templates.TemplateResponse('user/user.html',
                                      {'request': request,
                                       'user': user})
-    ret.set_cookie(key='access_toke', value=result['access_token'])
-    ret.set_cookie(key='refresh_toke', value=result['refresh_token'])
+    ret.set_cookie(key='access_token', value=result['access_token'])
+    ret.set_cookie(key='refresh_token', value=result['refresh_token'])
     return ret
 
 
@@ -117,6 +117,13 @@ async def logout_user(
     res = await auth.logout(response)
     user = None
     if res:
-        return templates.TemplateResponse('index.html',
-                                          {'request': request,
-                                           'user': user})
+        ret = templates.TemplateResponse('index.html',
+                                         {'request': request,
+                                          'user': user})
+        ret.delete_cookie('access_token')
+        ret.delete_cookie('refresh_token')
+        return ret
+    
+    return templates.TemplateResponse('index.html',
+                                      {'request': request,
+                                       'user': user})
