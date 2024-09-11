@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from typing import Annotated
 
 from jose import jwt, JWTError
-from passlib.context import CryptContext
 import bcrypt
 from fastapi import HTTPException, Response, Request, security
 from sqlalchemy.ext.asyncio import AsyncSession

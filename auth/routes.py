@@ -35,7 +35,7 @@ async def register_user(request: Request,
                         username: Annotated[str, Form()],
                         email: Annotated[str, Form()],
                         password: Annotated[str, Form()],
-                        db: AsyncSession = Depends(get_session)
+                        db: Annotated[AsyncSession, Depends(get_session)]
                         ):
     user = UserCreate(username=username,
                       password=password,

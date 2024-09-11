@@ -2,72 +2,27 @@
 {% block content %}
         <section>
             <h2>Мої автомобілі</h2>
-            <p>Перелік автомобілів</p>
             <!-- Відображення даних про номерний знак та статус -->
-            <a href="#" class="button">Додати автомобіль</a>
-            <div>
-                <table hx-indicator=".htmx-indicator">
-                    <thead>
-                        <tr>
-                            <th>№ з/п</th>
-                            <th>Номерний знак</th>
-                            <th>Статус</th>
-                            <th>Дія</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <th>1</th>
-                            <th>AA1234BB</th>
-                            <th>Виїзд</th>
-                            <th><ul>
-                                    <li>Історі паркувань</li>
-                                    <li>Рахунки</li>
-                                    <li>Видалити</li>
-                                </ul>
-                            </th>
-                        </tr>
-                        <tr>
-                            <th>2</th>
-                            <th>AX5544АА</th>
-                            <th>Виїзд</th>
-                            <th><ul>
-                                    <li>Історі паркувань</li>
-                                    <li>Рахунки</li>
-                                    <li>Видалити</li>
-                                </ul>
-                            </th>
-                        </tr>
-                        <tr>
-                            <th>3</th>
-                            <th>DI6677JА</th>
-                            <th>На парковці</th>
-                            <th><ul>
-                                    <li>Історі паркувань</li>
-                                    <li>Рахунки</li>
-                                    <li>Видалити</li>
-                                </ul>
-                            </th>
-                        </tr>
-                        <tr>
-                            <th>4</th>
-                            <th>BH1010YA</th>
-                            <th>На парковці</th>
-                            <th><ul>
-                                    <li>Історі паркувань</li>
-                                    <li>Рахунки</li>
-                                    <li>Видалити</li>
-                                </ul>
-                            </th>
-                        </tr>
-                    </tbody>
-                </table>
-                <center><img class="htmx-indicator" width="60" src="{{ url_for ('static', path='img/bars.svg')}}"></center>
-            </div>
+            <a href="{{ url_for('get_add_car_form')}}" class="button">Додати автомобіль</a>
+            <div 
+            hx-get="{{ url_for('get_user_cars')}}"
+            hx-trigger="load"
+            hx-swap="innerHTML" 
+            >
+            <!-- htmx page goes here -->
+        </div>  
         </section>
         <section>
+            <h2>Мої рахунки</h2>
+            <div 
+            hx-get="{{ url_for('get_user_bills')}}"
+            hx-trigger="load"
+            hx-swap="innerHTML" 
+            >
+        </section>
+        <!-- <section>
             <h2>Історія паркування</h2>
             <p>Перегляньте історію своїх паркувань.</p>
-            <!-- Таблиця з історією паркування -->
-        </section>
+            Таблиця з історією паркування 
+            </section> -->
 {% endblock %}
