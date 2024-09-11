@@ -29,7 +29,7 @@ async def is_banned(plate: str) -> bool:
     return False
 
 
-async def is_creditable(pate: str) -> bool:
+async def is_creditable(plate: str) -> bool:
 
     async with get_session() as session:
         stmnt = select(Car).filter(Car.car_plate == plate) \
@@ -44,11 +44,9 @@ async def is_creditable(pate: str) -> bool:
 
 async def is_parked(plate: str) -> bool:
 
-
     return False
 
 
 async def is_out(plate: str) -> bool:
-
 
     return False

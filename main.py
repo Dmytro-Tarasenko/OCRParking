@@ -8,6 +8,7 @@ from auth.routes import router as auth_router
 from frontend.routes import router as front_router
 from user.routes import router as user_router
 from admin.routes import router as admin_router
+from cameras.routes import router as cameras_router
 
 
 app = FastAPI()
@@ -19,6 +20,7 @@ app.include_router(auth_router)
 app.include_router(front_router)
 app.include_router(user_router)
 app.include_router(admin_router)
+app.include_router(cameras_router)
 
 
 if __name__ == "__main__":
