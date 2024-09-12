@@ -52,8 +52,10 @@ class ParkingHistoryORM(BaseORM):
         DateTime,
         default=datetime.now()
         )
-    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    car_id: Mapped[int] = mapped_column(ForeignKey('cars.id'), nullable=False)
+    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime,
+                                                         default=None)
+    car_id: Mapped[int] = mapped_column(ForeignKey('cars.id'),
+                                        nullable=False)
 
     # relations
     car: Mapped[CarORM] = relationship(CarORM,

@@ -66,8 +66,22 @@ async def post_enter_camera(
             }
         )
 
+    stmnt = (
+        select(CarORM)
+        .where(CarORM.car_plate == car_plate)
+        .options(
+            selectinload(CarORM.owner)
+            )
+        )
+    res = await db.execute(stmnt)
+    car_db = res.scalar_one()
+
     parking = ParkingHistoryORM(
+        car_id=car_db.id
     )
+    db.add(parking)
+    await db.commit()
+
     return templates.TemplateResponse(
         'cameras/cameras.html',
         {
