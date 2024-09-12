@@ -15,9 +15,15 @@
             <th>{{car.car_plate}}</th>
             <th>{{car.status}}</th>
             <th><ul>
-                    <li>Історі паркувань</li>
-                    <li>Рахунки</li>
-                    <li>Видалити</li>
+                    <li>
+                        <a href="{{ url_for('get_car_parkings', car_plate=car.car_plate) }}" class="button">Історія паркувань</a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('get_car_bills', car_plate=car.car_plate) }}" class="button">Рахунки</a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('about')}}" class="button">Видалити</a>
+                    </li>
                 </ul>
             </th>
         </tr>
