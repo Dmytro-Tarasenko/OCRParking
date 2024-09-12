@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
-from settings import Settings
+from settings import settings
 from auth import Authentication
 from db_models.db import get_session
 from schemas.auth import UserCreate
