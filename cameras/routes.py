@@ -82,10 +82,17 @@ async def post_enter_camera(
     db.add(parking)
     await db.commit()
 
+    new_bill = BillingORM(
+        user_id=car_db.owner.id
+    )
+
+    parking.bill=new_bill
+    db.refresh(parking)
+    await db.commit()
+
     return templates.TemplateResponse(
         'cameras/cameras.html',
         {
-            'request': request,
-            'error': f"User {car_db.owner.username} is banned!"
+            'request': request
             }
         )
