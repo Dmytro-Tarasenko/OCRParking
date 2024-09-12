@@ -1,0 +1,50 @@
+{% extends "base.html" %}}
+{% block content %}
+        <section class="hero">
+            <h2>Система камер автоматичної парковки</h2>
+            <div>
+                <h2>Камера в'їзду</h2>
+                <form action="/cameras/enter" method="post">
+                    <h1>Photo of entering car</h1>
+                    <div>
+                      <input type="text" id="floatingInput" name="car_plate" placeholder="Carplate" required>
+                      <label for="floatingInput">Carplate</label>
+                    </div>
+                    {% if error %}
+                        <div role="alert">
+                        {{ error }}
+                        </div>
+                    {% endif %}
+                    <div>
+                    <button type="submit">Process car</button>
+                    </div>
+                  </form>
+            </div>
+            <div>
+                <h2>Камера виїзду</h2>
+                <form action="/cameras/enter" method="post">
+                    <h1>Photo of leaving car</h1>
+                    <div>
+                      <input type="text" id="floatingInput" name="car_plate" placeholder="Carplate" required>
+                      <label for="floatingInput">Carplate</label>
+                    </div>
+                    {% if error %}
+                        <div role="alert">
+                        {{ error }}
+                        </div>
+                    {% endif %}
+                    <div>
+                    <button type="submit">Process car</button>
+                    </div>
+                  </form>
+            </div>
+            <div>
+                <h2>Паркомісця</h2>
+                <p>вільні 15 з 30</p>
+            </div>
+            <div>
+                <h2>Шлагбаум</h2>
+                <p>Опущений</p>
+            </div>
+        </section>
+{% endblock %}

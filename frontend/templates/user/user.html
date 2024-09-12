@@ -1,36 +1,28 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Кабінет користувача</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <header>
-        <h1>Кабінет користувача</h1>
-        <nav>
-            <ul>
-                <li><a href="#">Мій профіль</a></li>
-                <li><a href="#">Історія паркування</a></li>
-                <li><a href="#">Вийти</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
+{% extends "base.html" %}
+{% block content %}
         <section>
-            <h2>Мій номерний знак</h2>
-            <p>Інформація про ваш номерний знак та статус паркування.</p>
+            <h2>Мої автомобілі</h2>
             <!-- Відображення даних про номерний знак та статус -->
+            <a href="{{ url_for('get_add_car_form')}}" class="button">Додати автомобіль</a>
+            <div 
+            hx-get="{{ url_for('get_user_cars')}}"
+            hx-trigger="load"
+            hx-swap="innerHTML" 
+            >
+            <!-- htmx page goes here -->
+        </div>  
         </section>
         <section>
+            <h2>Мої рахунки</h2>
+            <div 
+            hx-get="{{ url_for('get_user_bills')}}"
+            hx-trigger="load"
+            hx-swap="innerHTML" 
+            >
+        </section>
+        <!-- <section>
             <h2>Історія паркування</h2>
             <p>Перегляньте історію своїх паркувань.</p>
-            <!-- Таблиця з історією паркування -->
-        </section>
-    </main>
-    <footer>
-        <p>&copy; 2024 Система управління паркуванням. Всі права захищені.</p>
-    </footer>
-</body>
-</html>
+            Таблиця з історією паркування 
+            </section> -->
+{% endblock %}

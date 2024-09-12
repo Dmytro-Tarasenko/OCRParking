@@ -1,8 +1,11 @@
-{% extends "base.html" %}}
+{% extends "base.html" %}
 {% block content %}
         <section class="hero">
             <h2>Ласкаво просимо до системи управління паркуванням</h2>
             <p>Автоматичне розпізнавання номерних знаків і відстеження паркування.</p>
-            <a href="#" class="button">Дізнатися більше</a>
+            <a href="{{ url_for('about')}}" class="button">Дізнатися більше</a>
+        </section>
+        <section>
+            
         </section>
 {% endblock %}

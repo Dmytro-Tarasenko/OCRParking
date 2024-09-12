@@ -18,12 +18,9 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 router = APIRouter(prefix='/admin',
+                   default_response_class=HTMLResponse,
+                   include_in_schema=False,
                    tags=["Admin"])
-
-
-@router.get('/')
-def get_user_page(request):
-    pass
 
 
 @router.post("/add_user", dependencies=[Depends(auth.oauth2_scheme)], status_code=status.HTTP_201_CREATED)
