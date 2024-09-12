@@ -1,4 +1,5 @@
 from typing import Annotated, Any, Optional
+import re
 
 from fastapi import Request, Response, Depends, Cookie, Form
 from fastapi.routing import APIRouter
@@ -24,6 +25,8 @@ from db_models.orms import (
     BillingORM
     ) 
 from db_models.db import get_session
+
+NON_CHARS_REGEXP = r"[^a-zA-Z0-9]"
 
 auth = Authentication()
 
@@ -127,6 +130,8 @@ async def post_add_car(
     access_token: Annotated[Optional[str], Cookie()] = None
 ) -> Any:
     user = None
+    car_plate = car_plate.upper()
+    car_plate = re.sub(NON_CHARS_REGEXP, "", car_plate)
     if access_token:
         username = auth.get_current_user(request)
         user = User(username=username)
@@ -358,3 +363,12 @@ async def get_car_parkings(
                                           'parkings': parkings_info
                                       })
 
+
+@router.delete('/{car_plate:str}')
+async def delete_car(
+    request: Request,
+    car_plate: str,
+    db: Annotated[AsyncSession, Depends(get_session)],
+    access_token: Annotated[Optional[str], Cookie()] = None
+) -> Any:
+    pass
