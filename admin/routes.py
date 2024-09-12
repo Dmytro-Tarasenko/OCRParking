@@ -7,14 +7,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
 from db_models.settings import Settings
-from routes.auth import Authentication
+from auth import Authentication
 from db_models.db import get_session
 from schemas.auth import UserCreate
-from db_models.models import User as UserModel, ParkingHistory, Billing, User
-from db_models.models import Car
+from db_models.orms import UserORM, ParkingHistoryORM, BillingORM, CarORM
+
 
 auth = Authentication()
 settings = Settings()
+
 router = APIRouter(prefix='/admin',
                    default_response_class=HTMLResponse,
                    include_in_schema=False,
@@ -23,12 +24,12 @@ router = APIRouter(prefix='/admin',
 
 @router.post("/add_user", dependencies=[Depends(auth.oauth2_scheme)], status_code=status.HTTP_201_CREATED)
 async def add_user(user: UserCreate, db: AsyncSession = Depends(get_session)):
-    existing_user = await db.execute(select(UserModel).where(UserModel.username == user.username))
+    existing_user = await db.execute(select(UserORM).where(UserORM.username == user.username))
     if existing_user.scalar():
         return {"error": "Username already registered"}
 
     hashed_password = auth.get_password_hash(user.password)
-    new_user = UserModel(username=user.username, email=user.email, password=hashed_password)
+    new_user = UserORM(username=user.username, email=user.email, password=hashed_password)
 
     db.add(new_user)
     await db.commit()
@@ -37,7 +38,7 @@ async def add_user(user: UserCreate, db: AsyncSession = Depends(get_session)):
 
 @router.delete("/delete_user/{username}", dependencies=[Depends(auth.oauth2_scheme)], status_code=200)
 async def delete_user(username: str, db: AsyncSession = Depends(get_session)):
-    result = await db.execute(select(UserModel).where(UserModel.username == username))
+    result = await db.execute(select(UserORM).where(UserORM.username == username))
     user = result.scalar()
 
     if not user:
@@ -50,7 +51,7 @@ async def delete_user(username: str, db: AsyncSession = Depends(get_session)):
 
 @router.put("/toggle_ban/{username}", dependencies=[Depends(auth.oauth2_scheme)])
 async def toggle_user_ban(username: str, db: AsyncSession = Depends(get_session)):
-    user = await db.execute(select(UserModel).where(UserModel.username == username))
+    user = await db.execute(select(UserORM).where(UserORM.username == username))
     user = user.scalar()
     if not user:
         return {"error": "User not found"}
@@ -72,13 +73,13 @@ async def toggle_user_ban(username: str, db: AsyncSession = Depends(get_session)
 
 @router.get("/user_stats/{username}", dependencies=[Depends(auth.oauth2_scheme)])
 async def get_user_stats(username: str, db: AsyncSession = Depends(get_session)):
-    user = await db.execute(select(UserModel).where(UserModel.username == username))
+    user = await db.execute(select(UserORM).where(UserORM.username == username))
     user = user.scalar()
     if not user:
         return {"error": "User not found"}
 
-    parking_history = await db.execute(select(ParkingHistory).where(ParkingHistory.car_id.in_(
-        select(Car.id).where(Car.user_id == user.id)
+    parking_history = await db.execute(select(ParkingHistoryORM).where(ParkingHistoryORM.car_id.in_(
+        select(CarORM.id).where(CarORM.user_id == user.id)
     )))
     history = parking_history.scalars().all()
 
@@ -99,11 +100,11 @@ async def get_user_stats(username: str, db: AsyncSession = Depends(get_session))
 
 @router.get("/car_stats/{car_id}", dependencies=[Depends(auth.oauth2_scheme)])
 async def get_car_stats(car_id: int, db: AsyncSession = Depends(get_session)):
-    car = await db.get(Car, car_id)
+    car = await db.get(CarORM, car_id)
     if not car:
         return {"error": "Car not found", "status_code": 404}
 
-    parking_history = await db.execute(select(ParkingHistory).where(ParkingHistory.car_id == car_id))
+    parking_history = await db.execute(select(ParkingHistoryORM).where(ParkingHistoryORM.car_id == car_id))
     history = parking_history.scalars().all()
 
     return {
@@ -122,8 +123,8 @@ async def get_car_stats(car_id: int, db: AsyncSession = Depends(get_session)):
 @router.get("/parking_stats", dependencies=[Depends(auth.oauth2_scheme)])
 async def get_parking_stats(db: AsyncSession = Depends(get_session)):
     try:
-        total_parkings = await db.execute(select(ParkingHistory))
-        total_cost = await db.execute(select(Billing.cost))
+        total_parkings = await db.execute(select(ParkingHistoryORM))
+        total_cost = await db.execute(select(BillingORM.cost))
 
         total_parkings_count = total_parkings.scalars().count()
         total_earned = sum(bill.cost for bill in total_cost.scalars())
@@ -140,7 +141,7 @@ async def get_parking_stats(db: AsyncSession = Depends(get_session)):
 async def get_active_users_stats(db: AsyncSession = Depends(get_session)):
     last_month = datetime.now() - timedelta(days=30)
     active_users = await db.execute(
-        select(func.count(User.id)).join(ParkingHistory).where(ParkingHistory.start_time >= last_month)
+        select(func.count(UserORM.id)).join(ParkingHistoryORM).where(ParkingHistoryORM.start_time >= last_month)
     )
     count_active_users = active_users.scalar()
 
@@ -150,7 +151,7 @@ async def get_active_users_stats(db: AsyncSession = Depends(get_session)):
 @router.get("/banned_users_stats", dependencies=[Depends(auth.oauth2_scheme)])
 async def get_banned_users_stats(db: AsyncSession = Depends(get_session)):
     banned_users = await db.execute(
-        select(func.count(User.id)).where(User.is_banned == True)
+        select(func.count(UserORM.id)).where(UserORM.is_banned == True)
     )
     count_banned_users = banned_users.scalar()
 
@@ -169,7 +170,7 @@ async def get_parking_occupancy_stats(db: AsyncSession = Depends(get_session), p
         start_time = now - timedelta(days=1)
 
     total_parkings = await db.execute(
-        select(func.count(ParkingHistory.id)).where(ParkingHistory.start_time >= start_time)
+        select(func.count(ParkingHistoryORM.id)).where(ParkingHistoryORM.start_time >= start_time)
     )
     total_parkings_count = total_parkings.scalar()
 
@@ -181,7 +182,7 @@ async def get_parking_occupancy_stats(db: AsyncSession = Depends(get_session), p
 @router.get("/max_cars_day_stats", dependencies=[Depends(auth.oauth2_scheme)])
 async def get_max_cars_per_day_stats(db: AsyncSession = Depends(get_session)):
     max_cars = await db.execute(
-        select(func.count(ParkingHistory.id)).group_by(func.date(ParkingHistory.start_time))
+        select(func.count(ParkingHistoryORM.id)).group_by(func.date(ParkingHistoryORM.start_time))
     )
     max_cars_per_day = max_cars.scalar()
 
@@ -191,9 +192,9 @@ async def get_max_cars_per_day_stats(db: AsyncSession = Depends(get_session)):
 @router.get("/peak_activity_time_stats", dependencies=[Depends(auth.oauth2_scheme)])
 async def get_peak_activity_time_stats(db: AsyncSession = Depends(get_session)):
     peak_time = await db.execute(
-        select(func.extract('hour', ParkingHistory.start_time), func.count(ParkingHistory.id))
-        .group_by(func.extract('hour', ParkingHistory.start_time))
-        .order_by(func.count(ParkingHistory.id).desc())
+        select(func.extract('hour', ParkingHistoryORM.start_time), func.count(ParkingHistoryORM.id))
+        .group_by(func.extract('hour', ParkingHistoryORM.start_time))
+        .order_by(func.count(ParkingHistoryORM.id).desc())
     )
     most_active_hour, count = peak_time.first()
 
@@ -203,8 +204,8 @@ async def get_peak_activity_time_stats(db: AsyncSession = Depends(get_session)):
 @router.get("/average_parking_duration_stats", dependencies=[Depends(auth.oauth2_scheme)])
 async def get_average_parking_duration_stats(db: AsyncSession = Depends(get_session)):
     average_duration = await db.execute(
-        select(func.avg(func.extract('epoch', ParkingHistory.end_time - ParkingHistory.start_time)))
-        .where(ParkingHistory.end_time.isnot(None))
+        select(func.avg(func.extract('epoch', ParkingHistoryORM.end_time - ParkingHistoryORM.start_time)))
+        .where(ParkingHistoryORM.end_time.isnot(None))
     )
     average_duration_seconds = average_duration.scalar()
 
@@ -225,7 +226,7 @@ async def get_parking_count_stats(db: AsyncSession = Depends(get_session), perio
         start_time = now - timedelta(days=1)
 
     parking_count = await db.execute(
-        select(func.count(ParkingHistory.id)).where(ParkingHistory.start_time >= start_time)
+        select(func.count(ParkingHistoryORM.id)).where(ParkingHistoryORM.start_time >= start_time)
     )
     count = parking_count.scalar()
 
@@ -235,7 +236,7 @@ async def get_parking_count_stats(db: AsyncSession = Depends(get_session), perio
 @router.get("/available_spots_stats", dependencies=[Depends(auth.oauth2_scheme)])
 async def get_available_spots_stats(db: AsyncSession = Depends(get_session)):
     occupied_spots = await db.execute(
-        select(func.count(ParkingHistory.id)).where(ParkingHistory.end_time.is_(None))
+        select(func.count(ParkingHistoryORM.id)).where(ParkingHistoryORM.end_time.is_(None))
     )
     occupied_spots_count = occupied_spots.scalar()
 
@@ -247,8 +248,8 @@ async def get_available_spots_stats(db: AsyncSession = Depends(get_session)):
 @router.get("/average_car_parking_duration_stats", dependencies=[Depends(auth.oauth2_scheme)])
 async def get_average_car_parking_duration_stats(db: AsyncSession = Depends(get_session)):
     average_duration = await db.execute(
-        select(func.avg(func.extract('epoch', ParkingHistory.end_time - ParkingHistory.start_time)))
-        .where(ParkingHistory.end_time.isnot(None))
+        select(func.avg(func.extract('epoch', ParkingHistoryORM.end_time - ParkingHistoryORM.start_time)))
+        .where(ParkingHistoryORM.end_time.isnot(None))
     )
     average_duration_seconds = average_duration.scalar()
 
