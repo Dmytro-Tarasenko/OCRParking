@@ -1,0 +1,9 @@
+<!-- templates/admin/user_deleted.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Користувача видалено успішно</h2>
+<p>Користувача з іменем <strong>{{ username }}</strong> було успішно видалено з системи.</p>
+
+<a href="{{ url_for('get_user_management') }}" class="button">Повернутися до управління користувачами</a>
+{% endblock %}

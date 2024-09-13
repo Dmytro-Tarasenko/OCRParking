@@ -1,6 +1,4 @@
 from datetime import datetime, timedelta
-from typing import Annotated
-
 from jose import jwt, JWTError
 import bcrypt
 from fastapi import HTTPException, Response, Request, security
@@ -22,18 +20,18 @@ class Authentication:
         return self.hash_service.hashpw(
             password=password.encode(),
             salt=self.hash_service.gensalt()
-            ).decode()
+        ).decode()
 
     def verify_password(
             self,
             plain_password: str,
             hashed_password: str
-            ) -> bool:
-        
+    ) -> bool:
+
         return self.hash_service.checkpw(
             password=plain_password.encode(),
             hashed_password=hashed_password.encode()
-            )
+        )
 
     def create_access_token(self,
                             data: dict,
@@ -41,10 +39,10 @@ class Authentication:
                             ) -> str:
         to_encode = data.copy()
         expire = (
-            datetime.now()
-            + (expires_delta 
-                or timedelta(minutes=settings.access_token_expire_minutes))
-            )
+                datetime.now()
+                + (expires_delta
+                   or timedelta(minutes=settings.access_token_expire_minutes))
+        )
         to_encode.update({"exp": expire})
         return jwt.encode(to_encode,
                           settings.secret,
@@ -56,10 +54,10 @@ class Authentication:
                              ) -> str:
         to_encode = data.copy()
         expire = (
-            datetime.now()
-            + (expires_delta 
-                or timedelta(minutes=settings.refresh_token_expire_days))
-            )
+                datetime.now()
+                + (expires_delta
+                   or timedelta(minutes=settings.refresh_token_expire_days))
+        )
         to_encode.update({"exp": expire})
         return jwt.encode(to_encode,
                           settings.refresh_secret,
@@ -97,7 +95,7 @@ class Authentication:
                                             user_login.password,
                                             db)
         if not user:
-            return
+            return {"msg": "Incorrect username or password"}
 
         access_token = self.create_access_token(data={"sub": user.username})
         refresh_token = self.create_refresh_token(data={"sub": user.username})
@@ -108,7 +106,7 @@ class Authentication:
         response.set_cookie(key="refresh_token",
                             value=refresh_token,
                             httponly=True)
-        
+
         return {"access_token": access_token,
                 "refresh_token": refresh_token}
 
@@ -146,7 +144,7 @@ class Authentication:
             raise HTTPException(status_code=401,
                                 detail="Not authenticated")
 
-        username = self.decode_token(token, settings.SECRET)
+        username = self.decode_token(token, settings.secret)
         result = await db.execute(select(UserModel).where(UserModel.username == username))
         user = result.scalar()
         if not user or not user.is_admin:

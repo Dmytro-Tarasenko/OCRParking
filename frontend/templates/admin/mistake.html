@@ -1,0 +1,8 @@
+<!-- templates/mistake.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Помилка</h2>
+<p>{{ message }}</p>
+<a href="{{ url_for('index') }}">Повернутися на головну сторінку</a>
+{% endblock %}
