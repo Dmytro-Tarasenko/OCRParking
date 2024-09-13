@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import TypeAlias, Literal, Optional, Any
+from typing import TypeAlias, Literal, Optional
 import pydantic
 
 
@@ -28,4 +28,4 @@ class BillingInfo(pydantic.BaseModel):
     username: str
     cost: float
     history: ParkingInfo
-    is_paid: bool = False
+    status: BillStatus = 'not issued'
