@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from frontend.routes import templates
+from user.routes import get_car_status
 from schemas.cars import CarInfo, CarStatus, BillingInfo, ParkingInfo
 from db_models.orms import UserORM, CarORM, ParkingHistoryORM, BillingORM
 from db_models.db import get_session
@@ -76,6 +77,25 @@ async def post_enter_camera(
     res = await db.execute(stmnt)
     car_db = res.scalar_one()
 
+    car_status = await get_car_status(db, car_db.id)
+
+    if car_status == 'parked':
+        bill_id = await utils.set_unleaved_ban(car_db, db)
+        ban_message = "Заїзд автомобіля без зареєстрованого виїзду."
+        message_id = await utils.send_ban_message(car_db.owner.id,
+                                                  bill_id,
+                                                  ban_message,
+                                                  db)
+        return templates.TemplateResponse(
+           'cameras/cameras.html',
+           {
+               'request': request,
+               'error': (f"Car {car_plate} registered as parked."
+                         + f" Bill #{bill_id} is sent."
+                         + f" User banned (message # {message_id}).")
+           }
+        )
+
     parking = ParkingHistoryORM(
         car_id=car_db.id
     )
@@ -86,7 +106,7 @@ async def post_enter_camera(
         user_id=car_db.owner.id
     )
 
-    parking.bill=new_bill
+    parking.bill = new_bill
     db.refresh(parking)
     await db.commit()
 
