@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -111,10 +111,55 @@ async def set_unleaved_ban(car: CarORM, db: AsyncSession) -> int:
     return parking_db.bill.id
 
 
-async def set_unparked_ban(user_id: CarORM, db: AsyncSession) -> int:
-    bill_id = 1
+async def set_unparked_ban(car: CarORM, db: AsyncSession) -> int:
+    date_limit = datetime.today().date() - timedelta(days=30)
+    end_time = datetime.now() - timedelta(minutes=59)
+    start_time = end_time - timedelta(hours=1)
+    stmnt = (
+        select(BillingORM)
+        .join(ParkingHistoryORM)
+        .where(
+            ParkingHistoryORM.car_id == car.id,
+            ParkingHistoryORM.end_time > date_limit
+            )
+    )
+    res = await db.execute(stmnt)
+    bills_db = res.scalars().all()
 
-    return bill_id
+    if len(bills_db) > 0:
+        fine = max([bill.cost for bill in bills_db])
+        fine = fine if fine >= 150 else 150
+    else:
+        fine = 150
+
+    parking_fine = ParkingHistoryORM(
+        start_time=start_time,
+        end_time=end_time
+    )
+    parking_fine.car = car
+    bill_fine = BillingORM(
+        user_id=car.owner.id,
+        cost=fine,
+        is_sent=True
+    )
+    parking_fine.bill = bill_fine
+
+    db.add(parking_fine)
+    await db.commit()
+
+    parking_current = ParkingHistoryORM(
+        start_time=end_time + timedelta(minutes=1)
+    )
+    bill_new = BillingORM(
+        user_id=car.owner.id
+    )
+    parking_current.bill = bill_new
+    parking_current.car = car
+
+    db.add(parking_current)
+    await db.commit()
+
+    return bill_fine.id
 
 
 async def send_ban_message(user_id: int,
