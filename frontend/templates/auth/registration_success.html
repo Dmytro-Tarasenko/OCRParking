@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<div>
+    <h1>Registration competed!</h1>
+    <p>User {{ username }} is registered successfuly!</p>
+    <div>
+    <a href="{{ url_for('get_login_form')}}" class="button">Sign in!</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

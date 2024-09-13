@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta
 from typing import Annotated
+
 from jose import jwt, JWTError
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import HTTPException, Response, Request, security
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
@@ -12,12 +13,16 @@ from settings import settings
 
 
 class Authentication:
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    # pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    hash_service = bcrypt
     oauth2_schema = security.OAuth2PasswordBearer(tokenUrl="token")
     # oauth2_schema = security.OAuth2PasswordBearer(tokenUrl="/auth/login")
 
     def get_password_hash(self, password: str) -> str:
-        return self.pwd_context.hash(password)
+        return self.hash_service.hashpw(
+            password=password.encode(),
+            salt=self.hash_service.gensalt()
+            ).decode()
 
     def verify_password(
             self,
@@ -25,7 +30,10 @@ class Authentication:
             hashed_password: str
             ) -> bool:
         
-        return self.pwd_context.verify(plain_password, hashed_password)
+        return self.hash_service.checkpw(
+            password=plain_password.encode(),
+            hashed_password=hashed_password.encode()
+            )
 
     def create_access_token(self,
                             data: dict,
@@ -33,7 +41,7 @@ class Authentication:
                             ) -> str:
         to_encode = data.copy()
         expire = (
-            datetime.now(datetime.UTC)  
+            datetime.now()
             + (expires_delta 
                 or timedelta(minutes=settings.access_token_expire_minutes))
             )
@@ -48,7 +56,7 @@ class Authentication:
                              ) -> str:
         to_encode = data.copy()
         expire = (
-            datetime.now(datetime.UTC)
+            datetime.now()
             + (expires_delta 
                 or timedelta(minutes=settings.refresh_token_expire_days))
             )
@@ -100,7 +108,7 @@ class Authentication:
         response.set_cookie(key="refresh_token",
                             value=refresh_token,
                             httponly=True)
-
+        
         return {"access_token": access_token,
                 "refresh_token": refresh_token}
 

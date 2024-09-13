@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block content %}
+{% if error%}
+<h2>
+    {{ error }}
+</h2>
+{% else %}
+{% if parkings %}
+<table hx-indicator=".htmx-indicator">
+    <thead>
+        <tr>
+            <th>№ з/п</th>
+            <th>Заїзд</th>
+            <th>Виїзд</th>
+            <!-- <th>Вартість</th>
+            <th>Статус</th> -->
+        </tr>
+    </thead>
+    <tbody>
+        {% for id, parking in parkings %}
+        <tr>
+            <th>{{ id }}</th>
+            <th>{{ parking.start_time }}</th>
+            <th>{{ parking.end_time }}</th>
+            <!-- <th>{{ bill.cost }}</th>
+            <th>{{ bill.history.is_paid }}</th> -->
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<center><img class="htmx-indicator" width="60" src="{{ url_for ('static', path='img/bars.svg')}}"></center>
+{% else %}
+    <h1>There are no bills yet</h1>
+{% endif %}
+{% endif %}
+{% endblock %}

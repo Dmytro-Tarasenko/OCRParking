@@ -1,10 +1,10 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 
 
 class Token(BaseModel):
     access_token: str
     refresh_token: str
-    token_type: str
 
 
 class TokenData(BaseModel):
@@ -13,7 +13,7 @@ class TokenData(BaseModel):
 
 class User(BaseModel):
     username: str
-    email: str
+    email: Optional[str] = None
     is_admin: bool = False
     is_banned: bool = False
 

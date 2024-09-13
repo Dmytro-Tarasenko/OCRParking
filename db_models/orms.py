@@ -50,18 +50,16 @@ class ParkingHistoryORM(BaseORM):
     id: Mapped[int] = mapped_column(primary_key=True)
     start_time: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.now(datetime.UTC)
+        default=datetime.now()
         )
-    end_time: Mapped[datetime] = mapped_column(DateTime)
+    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
     car_id: Mapped[int] = mapped_column(ForeignKey('cars.id'), nullable=False)
-    # parking_cost: Mapped[float] = mapped_column(Float)
-    bill_id: Mapped[int] = mapped_column(ForeignKey('billing.id'))
 
     # relations
     car: Mapped[CarORM] = relationship(CarORM,
                                        back_populates="parking_history")
     bill: Mapped["BillingORM"] = relationship("BillingORM",
-                                              back_populates="parking_history")
+                                              back_populates="history")
 
 
 class BillingORM(BaseORM):
@@ -69,16 +67,18 @@ class BillingORM(BaseORM):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     parking_history_id: Mapped[int] = mapped_column(
-        ForeignKey('parking_history.id')
+        ForeignKey('parking_history.id', ondelete='CASCADE')
         )
-    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id',
+                                                    ondelete='CASCADE'))
     cost: Mapped[Optional[float]] = mapped_column(Float, default=None)
     is_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     is_paid: Mapped[bool] = mapped_column(Boolean, default=False)
 
     # relations
-    parking_history: Mapped[ParkingHistoryORM] = relationship(
+    history: Mapped[ParkingHistoryORM] = relationship(
         ParkingHistoryORM,
-        back_populates="bill"
+        back_populates="bill",
+        foreign_keys=[parking_history_id]
         )
     user: Mapped[UserORM] = relationship(UserORM, back_populates="bills")

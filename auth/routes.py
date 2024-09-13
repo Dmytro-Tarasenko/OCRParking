@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, Any
 from fastapi import (APIRouter,
                      Depends,
                      HTTPException,
@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from auth.auth import Authentication
 # from db_models.models import User as UserModel
 from db_models.orms import UserORM
-from schemas.auth import UserLogin, UserCreate
+from schemas.auth import UserLogin, UserCreate, User
 from db_models.db import get_session
 
 from frontend.routes import templates
@@ -35,15 +35,15 @@ async def register_user(request: Request,
                         username: Annotated[str, Form()],
                         email: Annotated[str, Form()],
                         password: Annotated[str, Form()],
-                        db: AsyncSession = Depends(get_session)
+                        db: Annotated[AsyncSession, Depends(get_session)]
                         ):
     user = UserCreate(username=username,
                       password=password,
                       email=email)
-    res = await db.execute(
-        select(UserORM).where(UserORM.username == user.username)
-        )
-    existing_user = res.scalar()
+    stmnt = select(UserORM).where(UserORM.username == user.username)
+    res = await db.execute(stmnt)
+    existing_user = res.scalars().first()
+
     if existing_user:
         return templates.TemplateResponse(
             'auth/register_form.html',
@@ -54,10 +54,12 @@ async def register_user(request: Request,
     new_user = UserORM(username=user.username,
                        email=user.email,
                        password=hashed_password
-                    )
+                       )
     db.add(new_user)
     await db.commit()
-    return {"msg": "User registered successfully"}
+    return templates.TemplateResponse('auth/registration_success.html',
+                                      {'request': request,
+                                       'username': new_user.username})
 
 
 @router.get("/login")
@@ -80,8 +82,14 @@ async def login(response: Response,
     if not result:
         return templates.TemplateResponse('auth/login_form.html',
                                           context={'request': request,
-                                                   'error': 'User not found.'})
-    return result
+                                                   'error': 'User not found or invalid credentials'})
+    user = User(username=username)
+    ret = templates.TemplateResponse('user/user.html',
+                                     {'request': request,
+                                      'user': user})
+    ret.set_cookie(key='access_token', value=result['access_token'])
+    ret.set_cookie(key='refresh_token', value=result['refresh_token'])
+    return ret
 
 
 @router.post("/refresh")
@@ -101,8 +109,21 @@ async def admin_route(request: Request, db: AsyncSession = Depends(get_session))
     return {"msg": f"Hello, {user.username}. You are an admin!"}
 
 
-@router.post("/logout", response_model=dict)
+@router.get("/logout", response_model=dict)
 async def logout_user(
-        response: Response):
-
-    return await auth.logout(response)
+        response: Response,
+        request: Request
+        ) -> Any:
+    res = await auth.logout(response)
+    user = None
+    if res:
+        ret = templates.TemplateResponse('index.html',
+                                         {'request': request,
+                                          'user': user})
+        ret.delete_cookie('access_token')
+        ret.delete_cookie('refresh_token')
+        return ret
+    
+    return templates.TemplateResponse('index.html',
+                                      {'request': request,
+                                       'user': user})

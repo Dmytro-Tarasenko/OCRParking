@@ -1,0 +1,36 @@
+{% if cars %}
+<table hx-indicator=".htmx-indicator">
+    <thead>
+        <tr>
+            <th>№ з/п</th>
+            <th>Номерний знак</th>
+            <th>Статус</th>
+            <th>Дія</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for id, car in cars %}
+        <tr>
+            <th>{{ id }}</th>
+            <th>{{car.car_plate}}</th>
+            <th>{{car.status}}</th>
+            <th><ul>
+                    <li>
+                        <a href="{{ url_for('get_car_parkings', car_plate=car.car_plate) }}" class="button">Історія паркувань</a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('get_car_bills', car_plate=car.car_plate) }}" class="button">Рахунки</a>
+                    </li>
+                    <li>
+                        <a href="{{ url_for('about')}}" class="button">Видалити</a>
+                    </li>
+                </ul>
+            </th>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<center><img class="htmx-indicator" width="60" src="{{ url_for ('static', path='img/bars.svg')}}"></center>
+{% else %}
+    <h1>Cars not registered</h1>
+{% endif %}
