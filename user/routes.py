@@ -262,7 +262,7 @@ async def get_car_bills(
     for bill in bills_db:
         history = bill.history
         user = bill.user
-        history_entry = ParkingInfo(car=history.car,
+        history_entry = ParkingInfo(car=history.car.car_plate,
                                     start_time=history.start_time,
                                     end_time=history.end_time)
         bill_entry = BillingInfo(username=user.username,
@@ -336,14 +336,18 @@ async def get_car_parkings(
         entry_bill = parking.bill
         entry_car = parking.car
         status = 'not issued'
-        if entry_bill.is_sent == True:
+        if entry_bill.is_sent is True:
             status = 'sent'
-        if entry_bill.is_paid == True:
+        if entry_bill.is_paid is True:
             status = 'paid'
+
+        end_time = (parking.end_time.strftime("%Y-%m-%d %H:%M:%S")
+                    if parking.end_time
+                    else None)
         entry = ParkingInfoExt(
             car=entry_car.car_plate,
-            start_time=parking.start_time,
-            end_time=parking.end_time,
+            start_time=parking.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            end_time=end_time,
             cost=entry_bill.cost,
             bill_id=entry_bill.id,
             status=status

@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import String, Boolean, ForeignKey, Float, DateTime
+from sqlalchemy import String, Boolean, ForeignKey, Float, DateTime, Date
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db_models.db import BaseORM
 from datetime import datetime
@@ -25,6 +25,10 @@ class UserORM(BaseORM):
         "BillingORM",
         back_populates="user"
         )
+    messages: Mapped[List['ServiceMessageORM']] = relationship(
+        'ServiceMessageORM',
+        back_populates='user'
+    )
 
 
 class CarORM(BaseORM):
@@ -52,8 +56,10 @@ class ParkingHistoryORM(BaseORM):
         DateTime,
         default=datetime.now()
         )
-    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime)
-    car_id: Mapped[int] = mapped_column(ForeignKey('cars.id'), nullable=False)
+    end_time: Mapped[Optional[datetime]] = mapped_column(DateTime,
+                                                         default=None)
+    car_id: Mapped[int] = mapped_column(ForeignKey('cars.id'),
+                                        nullable=False)
 
     # relations
     car: Mapped[CarORM] = relationship(CarORM,
@@ -82,3 +88,46 @@ class BillingORM(BaseORM):
         foreign_keys=[parking_history_id]
         )
     user: Mapped[UserORM] = relationship(UserORM, back_populates="bills")
+    message: Mapped["ServiceMessageORM"] = relationship(
+        "ServiceMessageORM",
+        back_populates='bill'
+    )
+
+
+class ServiceMessageORM(BaseORM):
+    __tablename__ = 'messages'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id',
+                                                    ondelete='CASCADE'))
+    bill_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey('billing.id',
+                   ondelete='CASCADE')
+        )
+    message: Mapped[str] = mapped_column(String)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # relations
+    user: Mapped[UserORM] = relationship(UserORM, back_populates='messages')
+    bill: Mapped[BillingORM] = relationship(BillingORM,
+                                            back_populates='message',
+                                            foreign_keys=[bill_id]
+                                            )
+
+
+class TariffORM(BaseORM):
+    __tablename__ = "tariffs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tariff: Mapped[float] = mapped_column(Float)
+    set_date: Mapped[Date] = mapped_column(Date,
+                                           default=datetime.today().date())
+
+
+class CreditLimitsORM(BaseORM):
+    __tablename__ = "credit_limits"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    limit: Mapped[float] = mapped_column(Float)
+    set_date: Mapped[Date] = mapped_column(Date,
+                                           default=datetime.today().date())

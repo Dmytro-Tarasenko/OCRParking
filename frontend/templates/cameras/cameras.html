@@ -1,5 +1,11 @@
 {% extends "base.html" %}}
 {% block content %}
+        {% if error %}
+        <div>
+            <h1>Нештатна ситуація</h1>
+            <p>{{error}}</p>
+        </div>
+        {% endif %}
         <section class="hero">
             <h2>Система камер автоматичної парковки</h2>
             <div>
@@ -7,14 +13,9 @@
                 <form action="/cameras/enter" method="post">
                     <h1>Photo of entering car</h1>
                     <div>
-                      <input type="text" id="floatingInput" name="car_plate" placeholder="Carplate" required>
-                      <label for="floatingInput">Carplate</label>
+                      <input type="text" id="inCamera" name="car_plate" placeholder="Carplate" required>
+                      <label for="inCamera">Carplate</label>
                     </div>
-                    {% if error %}
-                        <div role="alert">
-                        {{ error }}
-                        </div>
-                    {% endif %}
                     <div>
                     <button type="submit">Process car</button>
                     </div>
@@ -22,17 +23,12 @@
             </div>
             <div>
                 <h2>Камера виїзду</h2>
-                <form action="/cameras/enter" method="post">
+                <form action="/cameras/out" method="post">
                     <h1>Photo of leaving car</h1>
                     <div>
-                      <input type="text" id="floatingInput" name="car_plate" placeholder="Carplate" required>
-                      <label for="floatingInput">Carplate</label>
+                      <input type="text" id="outCamera" name="car_plate" placeholder="Carplate" required>
+                      <label for="outCamera">Carplate</label>
                     </div>
-                    {% if error %}
-                        <div role="alert">
-                        {{ error }}
-                        </div>
-                    {% endif %}
                     <div>
                     <button type="submit">Process car</button>
                     </div>
