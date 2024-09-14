@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Керування баном користувачів</h2>
+    <p>Тут можна додати користувачів до бана або зняти з нього.</p>
+
+    <!-- Форма для додавання користувача до бана -->
+    <h3>Додати користувача до бана</h3>
+    <form action="/admin/ban_user" method="post">
+        <div>
+            <label for="ban_username">Ім'я користувача:</label>
+            <input type="text" id="ban_username" name="username" required>
+        </div>
+        <button type="submit">Додати в бан</button>
+    </form>
+
+    <!-- Список забанених користувачів -->
+    <h3>Забанені користувачі</h3>
+    <div
+        hx-get="{{ url_for('get_banned_users') }}"
+        hx-trigger="load"
+        hx-swap="innerHTML">
+        <!-- Список забанених користувачів буде завантажено сюди -->
+    </div>
+
+    <!-- Форма для зняття бана з користувача -->
+    <h3>Зняти бан з користувача</h3>
+    <form action="/admin/unban_user" method="post">
+        <div>
+            <label for="unban_username">Ім'я користувача:</label>
+            <input type="text" id="unban_username" name="username" required>
+        </div>
+        <button type="submit">Зняти бан</button>
+    </form>
+{% endblock %}

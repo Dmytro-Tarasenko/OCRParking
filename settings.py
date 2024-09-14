@@ -26,6 +26,7 @@ class EnvSettings(BaseSettings):
     database_url: str
     access_token_expire_minutes: int
     refresh_token_expire_days: int
+    total_spots: int = 30
 
 
 # production environment

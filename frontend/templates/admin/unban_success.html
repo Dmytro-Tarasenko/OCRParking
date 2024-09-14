@@ -1,0 +1,6 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Користувача <strong>{{ username }}</strong> розбанено успішно.</h2>
+<a href="{{ url_for('get_blacklist_management') }}" class="button">Повернутися до керування чорним списком.</a>
+{% endblock %}
