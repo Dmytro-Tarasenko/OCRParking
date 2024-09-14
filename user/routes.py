@@ -183,9 +183,12 @@ async def get_user_bills(
 
     stmnt = (
         select(BillingORM)
-        .where(BillingORM.user_id == user_db.id)
+        .where(BillingORM.user_id == user_db.id,
+               BillingORM.is_sent.is_(True))
         .options(selectinload(BillingORM.user),
-                 selectinload(BillingORM.history)
+                 selectinload(BillingORM.history),
+                 (selectinload(BillingORM.history)
+                  .selectinload(ParkingHistoryORM.car))
                  )
         )
     res = await db.execute(stmnt)
@@ -195,13 +198,24 @@ async def get_user_bills(
     for bill in bills_db:
         history = bill.history
         user = bill.user
-        history_entry = ParkingInfo(car=history.car,
-                                    start_time=history.start_time,
-                                    end_time=history.end_time)
+        status = 'not issued'
+        if bill.is_sent is True:
+            status = 'sent'
+        if bill.is_paid is True:
+            status = 'paid'
+
+        end_time = (history.end_time.strftime("%Y-%m-%d %H:%M:%S")
+                    if history.end_time
+                    else None)
+        history_entry = ParkingInfo(
+            car=history.car.car_plate,
+            start_time=history.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            end_time=end_time
+            )
         bill_entry = BillingInfo(username=user.username,
-                                 cost=bill.cost,
+                                 cost=round(bill.cost, 2),
                                  history=history_entry,
-                                 is_paid=bill.is_paid)
+                                 status=status)
         bills_info.append(bill_entry)
 
     if len(bills_info) > 0:
@@ -262,13 +276,25 @@ async def get_car_bills(
     for bill in bills_db:
         history = bill.history
         user = bill.user
-        history_entry = ParkingInfo(car=history.car,
-                                    start_time=history.start_time,
-                                    end_time=history.end_time)
+        
+        status = 'not issued'
+        if bill.is_sent is True:
+            status = 'sent'
+        if bill.is_paid is True:
+            status = 'paid'
+
+        end_time = (history.end_time.strftime("%Y-%m-%d %H:%M:%S")
+                    if history.end_time
+                    else None)
+        history_entry = ParkingInfo(
+            car=history.car.car_plate,
+            start_time=history.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            end_time=end_time
+            )
         bill_entry = BillingInfo(username=user.username,
                                  cost=bill.cost,
                                  history=history_entry,
-                                 is_paid=bill.is_paid)
+                                 status=status)
         bills_info.append(bill_entry)
 
     if len(bills_info) > 0:
@@ -336,14 +362,18 @@ async def get_car_parkings(
         entry_bill = parking.bill
         entry_car = parking.car
         status = 'not issued'
-        if entry_bill.is_sent == True:
+        if entry_bill.is_sent is True:
             status = 'sent'
-        if entry_bill.is_paid == True:
+        if entry_bill.is_paid is True:
             status = 'paid'
+
+        end_time = (parking.end_time.strftime("%Y-%m-%d %H:%M:%S")
+                    if parking.end_time
+                    else None)
         entry = ParkingInfoExt(
             car=entry_car.car_plate,
-            start_time=parking.start_time,
-            end_time=parking.end_time,
+            start_time=parking.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+            end_time=end_time,
             cost=entry_bill.cost,
             bill_id=entry_bill.id,
             status=status

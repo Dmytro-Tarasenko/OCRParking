@@ -8,6 +8,7 @@ from sqlalchemy import func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 
+
 from settings import EnvSettings
 from auth.auth import Authentication
 from db_models.db import get_session
@@ -17,12 +18,14 @@ from frontend.routes import templates
 
 
 auth = Authentication()
+
 settings = EnvSettings()
 
 router = APIRouter(prefix='/admin',
                    default_response_class=HTMLResponse,
                    # include_in_schema=False,
                    tags=["Admin"])
+
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -148,6 +151,7 @@ async def add_user(
                                           {'request': request, 'error': 'Admin access required'})
 
     existing_user = await db.execute(select(UserORM).where(UserORM.username == username))
+
     if existing_user.scalar():
         return templates.TemplateResponse("admin/add_user_form.html", {
             "request": request,
@@ -161,6 +165,7 @@ async def add_user(
     await db.commit()
 
     return templates.TemplateResponse("admin/user_added.html", {"request": request, "username": username})
+
 
 
 @router.post("/delete_user", response_class=HTMLResponse)
@@ -492,6 +497,7 @@ async def get_parking_occupancy_stats(request: Request, access_token: Annotated[
     average_occupancy = (total_parkings_count / (settings.TOTAL_SPOTS * 24)) * 100
 
     return {"average_occupancy_percent": average_occupancy}
+
 
 
 @router.get("/max_cars_day_stats", response_class=HTMLResponse)
