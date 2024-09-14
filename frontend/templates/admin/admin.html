@@ -1,42 +1,24 @@
-<!DOCTYPE html>
-<html lang="uk">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Панель адміністратора</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
-    <header>
-        <h1>Панель адміністратора</h1>
-        <nav>
-            <ul>
-                <li><a href="#">Користувачі</a></li>
-                <li><a href="#">Тарифи</a></li>
-                <li><a href="#">Чорний список</a></li>
-                <li><a href="#">Вийти</a></li>
-            </ul>
-        </nav>
-    </header>
-    <main>
-        <section>
-            <h2>Управління користувачами</h2>
-            <p>Тут можна додавати або видаляти користувачів.</p>
-            <!-- Таблиця користувачів або форми для додавання/видалення -->
-        </section>
-        <section>
-            <h2>Налаштування тарифів</h2>
-            <p>Змініть тарифи на паркування.</p>
-            <!-- Форма для налаштування тарифів -->
-        </section>
-        <section>
-            <h2>Чорний список</h2>
-            <p>Додавайте або видаляйте автомобілі з чорного списку.</p>
-            <!-- Форма для чорного списку -->
-        </section>
-    </main>
-    <footer>
-        <p>&copy; 2024 Система управління паркуванням. Всі права захищені.</p>
-    </footer>
-</body>
-</html>
+{% extends "base.html" %}
+{% block content %}
+<header>
+    <h1>Панель адміністратора</h1>
+    <nav>
+        <ul>
+            <li><a href="#" class="button" hx-get="{{ url_for('get_user_management') }}" hx-target="#admin-content">Користувачі</a>
+            </li>
+            <li><a href="#" class="button" hx-get="{{ url_for('get_tariff_management') }}" hx-target="#admin-content">Тарифи</a>
+            </li>
+            <li><a href="#" class="button" hx-get="{{ url_for('get_blacklist_management') }}"
+                   hx-target="#admin-content">Чорний список</a></li>
+            <li><a href="/logout" class="button">Вийти</a></li>
+        </ul>
+    </nav>
+</header>
+
+<main>
+    <section id="admin-content">
+        <h2>Ласкаво просимо до панелі адміністратора</h2>
+        <p>Оберіть розділ для управління з меню вище.</p>
+    </section>
+</main>
+{% endblock %}
