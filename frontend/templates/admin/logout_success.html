@@ -1,0 +1,9 @@
+<!-- templates/logout_success.html -->
+
+{% extends "base.html" %}
+
+{% block content %}
+<h1>Ви успішно вийшли із панелі адміністратора</h1>
+<p>Ви можете <a href="{{ url_for('get_login_form') }}">увійти знову</a> або
+    повернутися на <a href="{{ url_for('index') }}">головну сторінку</a>.</p>
+{% endblock %}
