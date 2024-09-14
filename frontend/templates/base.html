@@ -18,7 +18,7 @@
           
         <ul class="menu">
           <div class="logo">
-            <img src='C:\Users\Alex\Desktop\OCRParking\frontend\static\img\logo.png', alt="Логотип OCRParking">
+            <img src="{{ url_for('static', path='img/logo.png')}}", width="60", alt="Логотип OCRParking">
           </div> 
           <li><a href="{{ url_for('index')}}">Головна</a></li>
           <li><a href="{{ url_for('about')}}">Про застосунок</a></li>

@@ -10,7 +10,7 @@
             <h2>Система камер автоматичної парковки</h2>
             <div>
                 <h2>Камера в'їзду</h2>
-                <form action="/cameras/enter" method="post">
+                <form action="{{ url_for ('post_enter_camera')}}" method="post">
                     <h1>Photo of entering car</h1>
                     <div>
                       <input type="text" id="inCamera" name="car_plate" placeholder="Carplate" required>
@@ -23,7 +23,7 @@
             </div>
             <div>
                 <h2>Камера виїзду</h2>
-                <form action="/cameras/out" method="post">
+                <form action="{{ url_for ('post_leave_camera')}}" method="post">
                     <h1>Photo of leaving car</h1>
                     <div>
                       <input type="text" id="outCamera" name="car_plate" placeholder="Carplate" required>
