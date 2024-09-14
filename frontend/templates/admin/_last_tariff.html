@@ -1,0 +1,24 @@
+<!-- templates/admin/_last_tariff.html -->
+
+<h3>Останній актуальний тариф</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Тариф</th>
+            <th>Дата встановлення</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% if tariff %}
+        <tr>
+            <td>{{ tariff.tariff }} грн/год</td>
+            <td>{{ tariff.set_date }}</td>
+
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="2">Немає встановленого тарифу.</td>
+        </tr>
+        {% endif %}
+    </tbody>
+</table>

@@ -1,10 +1,23 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Title</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-</body>
-</html>
+{% block content %}
+<h2>Керування тарифами</h2>
+
+<!-- Форма для додавання нового тарифу -->
+<h3>Додати новий тариф</h3>
+<form action="/admin/tariffs/add" method="post">
+    <div>
+        <label for="new_rate">Новий тариф (грн/год):</label>
+        <input type="number" id="new_rate" name="new_rate" step="0.01" required>
+    </div>
+    <button type="submit">Додати тариф</button>
+</form>
+
+<!-- Останній актуальний тариф -->
+<div
+    hx-get="{{ url_for('get_last_tariff') }}"
+    hx-trigger="load"
+    hx-swap="innerHTML">
+</div>
+
+{% endblock %}
