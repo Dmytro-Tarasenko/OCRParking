@@ -26,4 +26,5 @@ app.include_router(cameras_router)
 if __name__ == "__main__":
     uvicorn.run(app=app,
                 host="localhost",
-                port=8080)
+                port=8000)
+
