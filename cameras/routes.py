@@ -199,9 +199,7 @@ async def post_leave_camera(
     res = await db.execute(stmnt)
     parking_db = res.scalar_one_or_none()
     end_time = datetime.now()
-    parking_db = ParkingHistoryORM(
-        end_time=end_time
-    )
+    parking_db.end_time=end_time
 
     tariff = await utils.get_tariff_for_date(
         parking_db.start_time,

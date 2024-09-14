@@ -29,3 +29,15 @@ class BillingInfo(pydantic.BaseModel):
     cost: float
     history: ParkingInfo
     status: BillStatus = 'not issued'
+
+
+class MessageInfo(pydantic.BaseModel):
+    model_config = {
+        'from_attributes': True 
+    }
+    id: int
+    user_id: int
+    bill_id: int
+    message: str
+    is_active: bool
+    is_ban: Optional[bool] = False

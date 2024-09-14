@@ -1,6 +1,15 @@
 {% extends "base.html" %}
 {% block content %}
         <section>
+            <h2>Мої повідомлення</h2>
+            <!-- Відображення даних про номерний знак та статус -->
+            <div 
+            hx-get="{{ url_for('get_user_messages')}}"
+            hx-trigger="load"
+            hx-swap="innerHTML" 
+            >
+            <!-- htmx page goes here -->
+            </div>
             <h2>Мої автомобілі</h2>
             <!-- Відображення даних про номерний знак та статус -->
             <a href="{{ url_for('get_add_car_form')}}" class="button">Додати автомобіль</a>
@@ -10,7 +19,7 @@
             hx-swap="innerHTML" 
             >
             <!-- htmx page goes here -->
-        </div>  
+            </div>  
         </section>
         <section>
             <h2>Мої рахунки</h2>

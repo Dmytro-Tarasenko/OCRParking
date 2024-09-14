@@ -21,6 +21,7 @@ class BaseORM(AsyncAttrs, DeclarativeBase):
 async_session = sessionmaker(
     bind=engine,
     class_=AsyncSession,
+    autoflush=False,
     expire_on_commit=False
 )
 

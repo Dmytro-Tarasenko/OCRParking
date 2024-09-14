@@ -17,12 +17,13 @@ from schemas.cars import (
     ParkingInfo,
     ParkingInfoExt,
     CarStatus,
-    BillStatus)
+    MessageInfo)
 from db_models.orms import (
     UserORM,
     CarORM,
     ParkingHistoryORM,
-    BillingORM
+    BillingORM,
+    ServiceMessageORM
     ) 
 from db_models.db import get_session
 
@@ -184,7 +185,8 @@ async def get_user_bills(
     stmnt = (
         select(BillingORM)
         .where(BillingORM.user_id == user_db.id,
-               BillingORM.is_sent.is_(True))
+               BillingORM.is_sent.is_(True),
+               BillingORM.is_paid.is_not(True))
         .options(selectinload(BillingORM.user),
                  selectinload(BillingORM.history),
                  (selectinload(BillingORM.history)
@@ -266,7 +268,9 @@ async def get_car_bills(
              )
     stmnt = (
         select(BillingORM)
-        .join(ParkingHistoryORM).filter(ParkingHistoryORM.car_id == car_db.id)
+        .join(ParkingHistoryORM)
+        .where(ParkingHistoryORM.car_id == car_db.id,
+               BillingORM.cost.is_not(None))
         .options(selectinload(BillingORM.history))
     )
     res = await db.execute(stmnt)
@@ -402,3 +406,165 @@ async def delete_car(
     access_token: Annotated[Optional[str], Cookie()] = None
 ) -> Any:
     pass
+
+
+@router.get('/messages')
+async def get_user_messages(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_session)],
+    access_token: Annotated[Optional[str], Cookie()] = None
+) -> Any:
+    user = None
+    if access_token:
+        username = auth.get_current_user(request)
+        user = User(username=username)
+    if user is None:
+        return templates.TemplateResponse('auth/login_form.html',
+                                          {'request': request,
+                                           'user': user})
+    
+    stmnt = (
+        select(ServiceMessageORM)
+        .join(UserORM)
+        .where(
+            UserORM.username == user.username,
+            ServiceMessageORM.is_active.is_(True)
+            )
+            .options(
+                selectinload(ServiceMessageORM.bill)
+                )
+        )
+    res = await db.execute(stmnt)
+
+    messages_db = res.scalars().all()
+
+    messages_info = [MessageInfo.model_validate(message)
+                     for message in messages_db
+                     if message.is_active is True]
+    
+    if len(messages_info) > 0:
+        messages_info = zip(range(1, len(messages_info)+1), messages_info)
+    else:
+        messages_info = None
+
+    return templates.TemplateResponse(
+        'user/message_list.html',
+        {
+            'user': user,
+            'request': request,
+            'messages': messages_info
+        }
+    )
+
+
+@router.get('/paybill/{bill_id:int}')
+async def get_paybill(
+    request: Request,
+    bill_id: int,
+    db: Annotated[AsyncSession, Depends(get_session)],
+    access_token: Annotated[Optional[str], Cookie()] = None
+) -> Any:
+    user = None
+    if access_token:
+        username = auth.get_current_user(request)
+        user = User(username=username)
+    
+    if user is None:
+        return templates.TemplateResponse('auth/login_form.html',
+                                          {'request': request,
+                                           'user': user}) 
+    
+    stmnt = (
+        select(BillingORM)
+        .where(BillingORM.id == bill_id)
+        .options(
+            selectinload(BillingORM.history),
+            selectinload(BillingORM.history).selectinload(ParkingHistoryORM.car)
+        )
+    )
+
+    res = await db.execute(stmnt)
+    bill_db = res.scalar_one_or_none()
+
+    data = {
+        'id': bill_db.id,
+        'car_plate': bill_db.history.car.car_plate,
+        'start': bill_db.history.start_time.strftime("%Y-%m-%d %H:%M:%S"),
+        'end': bill_db.history.end_time.strftime("%Y-%m-%d %H:%M:%S"),
+        'cost': bill_db.cost
+    }
+
+    return templates.TemplateResponse(
+        'user/bill_payment.html',
+        {
+            'request': request,
+            'user': user,
+            'bill': data
+        }
+    )
+
+
+@router.post('/paybill/{bill_id:int}')
+async def post_paybill(
+    request: Request,
+    bill_id: int,
+    db: Annotated[AsyncSession, Depends(get_session)],
+    access_token: Annotated[Optional[str], Cookie()] = None
+) -> Any:
+    user = None
+    if access_token:
+        username = auth.get_current_user(request)
+        user = User(username=username)
+    
+    if user is None:
+        return templates.TemplateResponse('auth/login_form.html',
+                                          {'request': request,
+                                           'user': user}) 
+    
+    stmnt = (
+        select(BillingORM)
+        .where(BillingORM.id == bill_id)
+        .options(
+            selectinload(BillingORM.message),
+            selectinload(BillingORM.user)
+        )
+    )
+
+    res = await db.execute(stmnt)
+    bill_db = res.scalars().first()
+
+    bill_db.is_paid = True
+    bill_db.message.is_active = False
+    bill_is_ban = bill_db.is_ban
+
+    await db.commit()
+
+    if bill_is_ban:
+        stmnt = (
+            select(UserORM)
+            .join(BillingORM)
+            .where(
+                UserORM.username == user.username,
+                BillingORM.is_ban.is_(True),
+                BillingORM.is_paid.is_not(True)
+                )
+        )
+
+        res = await db.execute(stmnt)
+        user_db = res.scalars().first()
+
+        if user_db is None:
+            stmnt = select(UserORM).where(UserORM.username == user.username)
+            res = await db.execute(stmnt)
+            user_db = res.scalar_one()
+            user_db.is_banned = False
+    
+    await db.commit()
+    
+    return templates.TemplateResponse(
+        'user/user.html',
+        {
+            'request': request,
+            'user': user
+        }
+    )

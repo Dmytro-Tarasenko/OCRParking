@@ -104,6 +104,7 @@ async def set_unleaved_ban(car: CarORM, db: AsyncSession) -> int:
     cost = tariff * time_diff_minutes
     parking_db.bill.cost = cost
     parking_db.bill.is_sent = True
+    parking_db.bill.is_ban = True
 
     parking_db.car.owner.is_banned = True
     await db.commit()
@@ -140,9 +141,11 @@ async def set_unparked_ban(car: CarORM, db: AsyncSession) -> int:
     bill_fine = BillingORM(
         user_id=car.owner.id,
         cost=fine,
-        is_sent=True
+        is_sent=True,
+        is_ban=True
     )
     parking_fine.bill = bill_fine
+    parking_fine.car.owner.is_banned = True
 
     db.add(parking_fine)
     await db.commit()
@@ -175,7 +178,8 @@ async def send_ban_message(user_id: int,
     message = ServiceMessageORM(
         message=ban_message,
         user_id=user_id,
-        bill_id=bill.id
+        bill_id=bill.id,
+        is_ban=True
     )
 
     db.add(message)
