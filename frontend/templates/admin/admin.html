@@ -10,6 +10,8 @@
             </li>
             <li><a href="#" class="button" hx-get="{{ url_for('get_blacklist_management') }}"
                    hx-target="#admin-content">Чорний список</a></li>
+            <li><a href="#" class="button" hx-get="{{ url_for('get_stats_management') }}"
+                   hx-target="#admin-content">Статистика</a></li>
             <li><a href="{{ url_for('logout') }}" class="button">Вийти</a></li>
         </ul>
     </nav>

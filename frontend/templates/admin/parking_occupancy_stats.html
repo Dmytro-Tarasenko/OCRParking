@@ -1,0 +1,16 @@
+
+{% block content %}
+<h2>Статистика заповнюваності паркування</h2>
+
+<form action="{{ url_for('get_parking_occupancy_stats') }}" method="get">
+    <label for="period">Виберіть період:</label>
+    <select id="period" name="period">
+        <option value="day" {% if period=='day' %}selected{% endif %}>День</option>
+        <option value="week" {% if period=='week' %}selected{% endif %}>Тиждень</option>
+        <option value="month" {% if period=='month' %}selected{% endif %}>Місяць</option>
+    </select>
+    <button type="submit">Показати статистику</button>
+</form>
+
+<p>Середня заповнюваність паркування за обраний період: {{ average_occupancy_percent | round(2) }}%</p>
+{% endblock %}

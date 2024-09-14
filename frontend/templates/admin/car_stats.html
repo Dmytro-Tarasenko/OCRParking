@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h2>Статистика автомобіля</h2>
+    <p>Номерний знак: {{ car_plate }}</p>
+
+    <h3>Історія паркувань</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Час початку</th>
+                <th>Час завершення</th>
+                <th>Вартість</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for record in parking_history %}
+            <tr>
+                <td>{{ record.start_time }}</td>
+                <td>{{ record.end_time or 'Триває' }}</td>
+                <td>{{ record.bill.cost if record.bill else 'Невідомо' }} грн</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="3">Немає записів.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% endblock %}
