@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<div>
+    <h2>Оплата рахунку №{{ bill.id }}</h2>
+    <p>За паркування автомобіля {{ bill.car_plate}}<br>
+       З  {{bill.start }} до {{ bill.end }} <br>
+       На суму: {{ bill.cost }}
+    </p>
+    <a class=button
+    hx-post="{{ url_for('post_paybill', bill_id=bill.id)}}"
+    hx-target="body"
+    hx-trigger="click"
+    >Оплатити разунок</a>
+</div>
+{% endblock %}

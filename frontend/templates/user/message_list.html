@@ -1,0 +1,36 @@
+{% if messages %}
+<table hx-indicator=".htmx-indicator">
+    <thead>
+        <tr>
+            <th>№ з/п</th>
+            <th>Повідомлення</th>
+            <th>Пов'язаний рахунок</th>
+            <th>Про заборону</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for id, message in messages %}
+        <tr {% if message.is_ban==True %}
+            bgcolor="tomato"
+            {% endif %}
+        >
+            <th>{{ id }}</th>
+            <th>{{ message.message }}</th>
+            <th>
+                <a href="{{ url_for('get_paybill', bill_id=message.bill_id)}}">{{ message.bill_id }}</a>
+                </th>
+            <th>
+                {% if message.is_ban==True %}
+                Так
+                {% else %}
+                Ні
+                {% endif %}
+            </th>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<center><img class="htmx-indicator" width="60" src="{{ url_for ('static', path='img/bars.svg')}}"></center>
+{% else %}
+    <h1>There are no messages yet</h1>
+{% endif %}

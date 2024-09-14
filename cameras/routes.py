@@ -1,4 +1,5 @@
-from typing import Annotated, Any, Optional
+from typing import Annotated, Any
+from datetime import datetime
 
 from fastapi import Request, Response, Depends, Form
 from fastapi.routing import APIRouter
@@ -187,18 +188,31 @@ async def post_leave_camera(
         )
 
     # TODO: Set end_time and billing info
-    parking = ParkingHistoryORM(
-        car_id=car_db.id
-    )
-    db.add(parking)
-    await db.commit()
+    stmnt = (
+        select(ParkingHistoryORM)
+        .where(ParkingHistoryORM.car_id == car_db.id,
+               ParkingHistoryORM.end_time.is_(None))
+               .options(
+                   selectinload(ParkingHistoryORM.bill)
+               )
+        )
+    res = await db.execute(stmnt)
+    parking_db = res.scalar_one_or_none()
+    end_time = datetime.now()
+    parking_db.end_time=end_time
 
-    new_bill = BillingORM(
-        user_id=car_db.owner.id
+    tariff = await utils.get_tariff_for_date(
+        parking_db.start_time,
+        db)
+
+    time_diff_minutes = (
+        (parking_db.end_time - parking_db.start_time).seconds // 60
     )
 
-    parking.bill = new_bill
-    db.refresh(parking)
+    cost = round(time_diff_minutes * tariff, 2)
+    parking_db.bill.cost = cost
+    parking_db.bill.is_sent = True
+
     await db.commit()
 
     # TODO: Turnpike action

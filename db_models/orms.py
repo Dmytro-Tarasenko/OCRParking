@@ -80,6 +80,9 @@ class BillingORM(BaseORM):
     cost: Mapped[Optional[float]] = mapped_column(Float, default=None)
     is_sent: Mapped[bool] = mapped_column(Boolean, default=False)
     is_paid: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_ban: Mapped[Optional[bool]] = mapped_column(Boolean,
+                                                   nullable=True,
+                                                   default=False)
 
     # relations
     history: Mapped[ParkingHistoryORM] = relationship(
@@ -106,6 +109,9 @@ class ServiceMessageORM(BaseORM):
         )
     message: Mapped[str] = mapped_column(String)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_ban: Mapped[Optional[bool]] = mapped_column(Boolean,
+                                                   nullable=True,
+                                                   default=False)
 
     # relations
     user: Mapped[UserORM] = relationship(UserORM, back_populates='messages')
