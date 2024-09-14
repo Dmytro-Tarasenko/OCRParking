@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Управління користувачами</h2>
+<p>Тут можна додавати або видаляти користувачів.</p>
+
+<!-- Форма для додавання користувача -->
+<form action="/admin/add_user" method="post">
+    <div>
+        <label for="username">Ім'я користувача:</label>
+        <input type="text" id="username" name="username" required>
+    </div>
+    <div>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+    </div>
+    <div>
+        <label for="password">Пароль:</label>
+        <input type="password" id="password" name="password" required>
+    </div>
+    <button type="submit">Додати користувача</button>
+</form>
+
+<!-- Список користувачів -->
+<h3>Список користувачів</h3>
+<div
+        hx-get="{{ url_for('get_user_list') }}"
+        hx-trigger="load"
+        hx-swap="innerHTML">
+</div>
+
+<!-- Форма для видалення користувача -->
+<h3>Видалити користувача</h3>
+<form action="/admin/delete_user" method="post">
+    <div>
+        <label for="delete_username">Ім'я користувача для видалення:</label>
+        <input type="text" id="delete_username" name="username" required>
+    </div>
+    <button type="submit">Видалити користувача</button>
+</form>
+
+
+{% endblock %}
