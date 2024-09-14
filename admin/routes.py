@@ -15,7 +15,6 @@ from schemas.auth import UserCreate, User
 from db_models.orms import UserORM, ParkingHistoryORM, BillingORM, CarORM, TariffORM
 from frontend.routes import templates
 
-
 auth = Authentication()
 settings = EnvSettings()
 
@@ -300,8 +299,35 @@ async def unban_user(
     })
 
 
-@router.post("/set_parking_tariff", response_class=HTMLResponse)
-async def set_parking_tariff(
+@router.get("/tariffs", response_class=HTMLResponse)
+async def list_tariffs(request: Request, db: AsyncSession = Depends(get_session),
+                       access_token: Annotated[Optional[str], Cookie()] = None):
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
+
+    current_username = auth.get_current_user(request)
+
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to set parking tariff")
+
+    result = await db.execute(select(TariffORM).order_by(TariffORM.set_date.desc()).limit(1))
+    current_tariff = result.scalar()
+
+    all_tariffs = await db.execute(select(TariffORM).order_by(TariffORM.set_date.desc()))
+    tariffs = all_tariffs.scalars().all()
+
+    return templates.TemplateResponse("admin/tariff_management.html", {
+        "request": request,
+        "current_tariff": current_tariff,
+        "tariffs": tariffs
+    })
+
+
+@router.post("/tariffs/add", response_class=HTMLResponse)
+async def add_tariff(
         request: Request,
         new_rate: float = Form(...),
         db: AsyncSession = Depends(get_session),
@@ -323,9 +349,36 @@ async def set_parking_tariff(
     db.add(new_tariff)
     await db.commit()
 
-    return templates.TemplateResponse("admin/set_tariff_success.html", {
+    return templates.TemplateResponse("admin/tariff_added.html", {
         "request": request,
         "msg": f"Parking tariff set to {new_rate} successfully"
+    })
+
+
+@router.get("/get_last_tariff", response_class=HTMLResponse)
+async def get_last_tariff(request: Request, db: AsyncSession = Depends(get_session),
+                          access_token: Annotated[Optional[str], Cookie()] = None):
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
+
+    current_username = auth.get_current_user(request)
+
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to set parking tariff")
+
+    last_tariff = await db.execute(select(TariffORM).order_by(TariffORM.set_date.desc(), TariffORM.id.desc()).limit(1))
+    tariff = last_tariff.scalar()
+    if tariff:
+        print(f"Тариф: {tariff.tariff}, Дата встановлення: {tariff.set_date}")
+    else:
+        print("Тариф не знайдено")
+
+    return templates.TemplateResponse("admin/_last_tariff.html", {
+        "request": request,
+        "tariff": tariff
     })
 
 
