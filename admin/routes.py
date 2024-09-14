@@ -2,12 +2,11 @@ from datetime import timedelta, datetime
 
 from typing import Annotated, Any, Optional
 
-from fastapi import APIRouter, Depends, Request, Cookie, Form
+from fastapi import APIRouter, Depends, Request, Cookie, Form, Response
 from fastapi.responses import HTMLResponse
 from sqlalchemy import func, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-
 
 from settings import EnvSettings
 from auth.auth import Authentication
@@ -24,7 +23,6 @@ router = APIRouter(prefix='/admin',
                    default_response_class=HTMLResponse,
                    # include_in_schema=False,
                    tags=["Admin"])
-
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -164,7 +162,6 @@ async def add_user(
     await db.commit()
 
     return templates.TemplateResponse("admin/user_added.html", {"request": request, "username": username})
-
 
 
 @router.post("/delete_user", response_class=HTMLResponse)
@@ -387,6 +384,26 @@ async def get_last_tariff(request: Request, db: AsyncSession = Depends(get_sessi
     })
 
 
+@router.get("/logout", response_class=HTMLResponse)
+async def logout(request: Request, response: Response, db: AsyncSession = Depends(get_session),
+                 access_token: Annotated[Optional[str], Cookie()] = None):
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
+
+    current_username = auth.get_current_user(request)
+
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to logout from admin panel")
+
+    response.delete_cookie(key="access_token")
+    response.delete_cookie(key="refresh_token")
+
+    return templates.TemplateResponse("admin/logout_success.html", {"request": request})
+
+
 @router.get("/user_stats", response_class=HTMLResponse)
 async def get_user_stats(request: Request, username: str, db: AsyncSession = Depends(get_session),
                          access_token: Annotated[Optional[str], Cookie()] = None):
@@ -550,7 +567,6 @@ async def get_parking_occupancy_stats(request: Request, access_token: Annotated[
     average_occupancy = (total_parkings_count / (settings.TOTAL_SPOTS * 24)) * 100
 
     return {"average_occupancy_percent": average_occupancy}
-
 
 
 @router.get("/max_cars_day_stats", response_class=HTMLResponse)
