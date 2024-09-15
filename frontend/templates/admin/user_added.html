@@ -1,12 +1,19 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block content %}
+<div class="success-message">
+  <h2 class="success-title">Користувача додано успішно</h2>
+  <p class="success-text">
+    Користувача з іменем <strong>{{ username }}</strong> було успішно додано до
+    системи.
+  </p>
 
-{% block content %}
-    <h2>Користувача додано успішно</h2>
-    <p>Користувача з іменем <strong>{{ username }}</strong> було успішно додано до системи.</p>
+  <!-- Кнопка для повернення до форми додавання користувача -->
+  <a href="{{ url_for('add_user_form') }}" class="btn-primary"
+    >Додати ще одного користувача</a
+  >
 
-    <!-- Кнопка для повернення до форми додавання користувача -->
-    <a href="{{ url_for('add_user_form') }}" class="button">Додати ще одного користувача</a>
-
-    <!-- Кнопка для повернення до панелі управління користувачами -->
-    <a href="{{ url_for('get_user_management') }}" class="button">Повернутися до управління користувачами</a>
+  <!-- Кнопка для повернення до панелі управління користувачами -->
+  <a href="{{ url_for('get_user_management') }}" class="btn-secondary"
+    >Повернутися до управління користувачами</a
+  >
+</div>
 {% endblock %}

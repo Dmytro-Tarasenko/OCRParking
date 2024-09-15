@@ -1,46 +1,63 @@
-{% extends "base.html" %}}
-{% block content %}
-        {% if error %}
-        <div>
-            <h1>Нештатна ситуація</h1>
-            <p>{{error}}</p>
-        </div>
-        {% endif %}
-        <section class="hero">
-            <h2>Система камер автоматичної парковки</h2>
-            <div>
-                <h2>Камера в'їзду</h2>
-                <form action="/cameras/enter" method="post">
-                    <h1>Photo of entering car</h1>
-                    <div>
-                      <input type="text" id="inCamera" name="car_plate" placeholder="Carplate" required>
-                      <label for="inCamera">Carplate</label>
-                    </div>
-                    <div>
-                    <button type="submit">Process car</button>
-                    </div>
-                  </form>
-            </div>
-            <div>
-                <h2>Камера виїзду</h2>
-                <form action="/cameras/out" method="post">
-                    <h1>Photo of leaving car</h1>
-                    <div>
-                      <input type="text" id="outCamera" name="car_plate" placeholder="Carplate" required>
-                      <label for="outCamera">Carplate</label>
-                    </div>
-                    <div>
-                    <button type="submit">Process car</button>
-                    </div>
-                  </form>
-            </div>
-            <div>
-                <h2>Паркомісця</h2>
-                <p>вільні 15 з 30</p>
-            </div>
-            <div>
-                <h2>Шлагбаум</h2>
-                <p>Опущений</p>
-            </div>
-        </section>
+{% extends "base.html" %} {% block content %} {% if error %}
+<div class="error-message">
+  <h1 class="error-title">Нештатна ситуація</h1>
+  <p class="error-text">{{error}}</p>
+</div>
+{% endif %}
+
+<section class="hero">
+  <h2 class="hero-title">Система камер автоматичної парковки</h2>
+
+  <div class="camera-section">
+    <h2 class="camera-title">Камера в'їзду</h2>
+    <form action="/cameras/enter" method="post" class="form">
+      <h1 class="camera-photo-title">Photo of entering car</h1>
+      <div class="form-group">
+        <input
+          type="text"
+          id="inCamera"
+          name="car_plate"
+          placeholder="Carplate"
+          required
+          class="form-input"
+        />
+        <label for="inCamera" class="form-label">Carplate</label>
+      </div>
+      <div class="form-group">
+        <button type="submit" class="btn-primary">Process car</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="camera-section">
+    <h2 class="camera-title">Камера виїзду</h2>
+    <form action="/cameras/out" method="post" class="form">
+      <h1 class="camera-photo-title">Photo of leaving car</h1>
+      <div class="form-group">
+        <input
+          type="text"
+          id="outCamera"
+          name="car_plate"
+          placeholder="Carplate"
+          required
+          class="form-input"
+        />
+        <label for="outCamera" class="form-label">Carplate</label>
+      </div>
+      <div class="form-group">
+        <button type="submit" class="btn-primary">Process car</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="parking-info">
+    <h2 class="parking-title">Паркомісця</h2>
+    <p class="parking-status">вільні 15 з 30</p>
+  </div>
+
+  <div class="barrier-info">
+    <h2 class="barrier-title">Шлагбаум</h2>
+    <p class="barrier-status">Опущений</p>
+  </div>
+</section>
 {% endblock %}

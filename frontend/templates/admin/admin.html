@@ -1,24 +1,46 @@
-{% extends "base.html" %}
-{% block content %}
-<header>
-    <h1>Панель адміністратора</h1>
-    <nav>
-        <ul>
-            <li><a href="#" class="button" hx-get="{{ url_for('get_user_management') }}" hx-target="#admin-content">Користувачі</a>
-            </li>
-            <li><a href="#" class="button" hx-get="{{ url_for('get_tariff_management') }}" hx-target="#admin-content">Тарифи</a>
-            </li>
-            <li><a href="#" class="button" hx-get="{{ url_for('get_blacklist_management') }}"
-                   hx-target="#admin-content">Чорний список</a></li>
-            <li><a href="/logout" class="button">Вийти</a></li>
-        </ul>
-    </nav>
+{% extends "base.html" %} {% block content %}
+<header class="header">
+  <h1>Панель адміністратора</h1>
+  <nav>
+    <ul class="menu">
+      <li>
+        <a
+          href="#"
+          class="button"
+          hx-get="{{ url_for('get_user_management') }}"
+          hx-target="#admin-content"
+          >Користувачі</a
+        >
+      </li>
+      <li>
+        <a
+          href="#"
+          class="button"
+          hx-get="{{ url_for('get_tariff_management') }}"
+          hx-target="#admin-content"
+          >Тарифи</a
+        >
+      </li>
+      <li>
+        <a
+          href="#"
+          class="button"
+          hx-get="{{ url_for('get_blacklist_management') }}"
+          hx-target="#admin-content"
+          >Чорний список</a
+        >
+      </li>
+      <li>
+        <a href="/logout" class="button">Вийти</a>
+      </li>
+    </ul>
+  </nav>
 </header>
 
-<main>
-    <section id="admin-content">
-        <h2>Ласкаво просимо до панелі адміністратора</h2>
-        <p>Оберіть розділ для управління з меню вище.</p>
-    </section>
+<main class="main">
+  <section id="admin-content" class="admin-content">
+    <h2>Ласкаво просимо до панелі адміністратора</h2>
+    <p>Оберіть розділ для управління з меню вище.</p>
+  </section>
 </main>
 {% endblock %}

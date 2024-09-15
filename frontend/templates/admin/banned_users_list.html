@@ -1,5 +1,5 @@
-<ul>
-    {% for user in banned_users %}
-    <li>{{ user.username }}</li>
-    {% endfor %}
+<ul class="banned-users-list">
+  {% for user in banned_users %}
+  <li class="banned-user-item">{{ user.username }}</li>
+  {% endfor %}
 </ul>
