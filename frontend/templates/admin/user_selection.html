@@ -1,0 +1,14 @@
+{% block content %}
+<h2>Оберіть користувача для перегляду статистики</h2>
+
+<form action="{{ url_for('get_user_stats') }}" method="get">
+    <label for="username">Користувачі:</label>
+    <select id="username" name="username" onchange="this.form.submit()">
+        <option value="" disabled selected>Виберіть користувача</option>
+        {% for user in users %}
+        <option value="{{ user.username }}">{{ user.username }} ({{ user.email }})</option>
+        {% endfor %}
+    </select>
+</form>
+
+{% endblock %}

@@ -1,17 +1,18 @@
 from datetime import timedelta, datetime
 
-from typing import Annotated, Any, Optional
+from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, Request, Cookie, Form, Response
 from fastapi.responses import HTMLResponse
-from sqlalchemy import func, delete
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import joinedload, selectinload
 
 from settings import EnvSettings
 from auth.auth import Authentication
 from db_models.db import get_session
-from schemas.auth import UserCreate, User
+from schemas.auth import User
 from db_models.orms import UserORM, ParkingHistoryORM, BillingORM, CarORM, TariffORM
 from frontend.routes import templates
 
@@ -95,6 +96,29 @@ async def get_blacklist_management(request: Request, access_token: Annotated[str
                                           {'request': request, 'user': None, 'error': 'Admin access required'})
 
     return templates.TemplateResponse("admin/blacklist_management.html", {"request": request, "user": current_user})
+
+
+@router.get("/stats_management", response_class=HTMLResponse, name="get_stats_management")
+async def get_stats_management(request: Request, db: AsyncSession = Depends(get_session),
+                               access_token: Annotated[str | None, Cookie()] = None):
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
+
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    # Отримуємо список автомобілів
+    cars = await db.execute(select(CarORM))
+    cars_list = cars.scalars().all()
+
+    return templates.TemplateResponse("admin/stats_management.html", {
+        "request": request,
+        "cars": cars_list
+    })
 
 
 @router.get("/user_list", response_class=HTMLResponse, name="get_user_list")
@@ -211,13 +235,10 @@ async def get_banned_users(request: Request, db: AsyncSession = Depends(get_sess
                                       {"request": request, "banned_users": banned_users})
 
 
-from fastapi import HTTPException
-
-
 @router.post("/ban_user", response_class=HTMLResponse)
 async def ban_user(
         request: Request,
-        username: str = Form(...),  # Отримання username через форму
+        username: str = Form(...),
         db: AsyncSession = Depends(get_session),
         access_token: Annotated[Optional[str], Cookie()] = None
 ):
@@ -404,152 +425,208 @@ async def logout(request: Request, response: Response, db: AsyncSession = Depend
     return templates.TemplateResponse("admin/logout_success.html", {"request": request})
 
 
-@router.get("/user_stats", response_class=HTMLResponse)
-async def get_user_stats(request: Request, username: str, db: AsyncSession = Depends(get_session),
+@router.get("/user_selection", response_class=HTMLResponse, name="user_selection")
+async def user_selection(request: Request, db: AsyncSession = Depends(get_session),
                          access_token: Annotated[Optional[str], Cookie()] = None):
     if not access_token:
         return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
 
     current_username = auth.get_current_user(request)
+    res = await db.execute(
+        select(UserORM).options(joinedload(UserORM.cars)).where(UserORM.username == current_username)
+    )
+    user = res.scalar()
 
-    user = await db.execute(select(UserORM).where(UserORM.username == current_username))
-    user = user.scalar()
     if not user:
-        return {"error": "User not found"}
+        return templates.TemplateResponse('mistake.html', {"request": request, "message": "User not found"})
 
-    parking_history = await db.execute(select(ParkingHistoryORM).where(ParkingHistoryORM.car_id.in_(
-        select(CarORM.id).where(CarORM.user_id == user.id)
-    )))
+    users_res = await db.execute(select(UserORM).options(joinedload(UserORM.cars)))
+    users = users_res.unique().scalars().all()
+
+    return templates.TemplateResponse("admin/user_selection.html", {
+        "request": request,
+        "users": users
+    })
+
+
+@router.get("/user_stats", response_class=HTMLResponse, name="get_user_stats")
+async def get_user_stats(request: Request, username: str, db: AsyncSession = Depends(get_session),
+                         access_token: Annotated[Optional[str], Cookie()] = None):
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
+
+    res = await db.execute(
+        select(UserORM).options(joinedload(UserORM.cars)).where(UserORM.username == username)
+    )
+    user = res.scalar()
+
+    if not user:
+        return templates.TemplateResponse('mistake.html', {"request": request, "message": "User not found"})
+
+    parking_history = await db.execute(
+        select(ParkingHistoryORM)
+        .options(joinedload(ParkingHistoryORM.bill))
+        .where(ParkingHistoryORM.car_id.in_(
+            select(CarORM.id).where(CarORM.user_id == user.id)
+        ))
+    )
     history = parking_history.scalars().all()
 
-    return {
-        "username": user.username,
-        "email": user.email,
-        "cars": [car.car_plate for car in user.cars],
-        "parking_history": [
-            {
-                "start_time": record.start_time,
-                "end_time": record.end_time,
-                "cost": record.bill
-            }
-            for record in history
-        ]
-    }
+    return templates.TemplateResponse("admin/user_stats.html", {
+        "request": request,
+        "user": user,
+        "parking_history": history
+    })
 
 
-@router.get("/car_stats/{car_id}", response_class=HTMLResponse)
+@router.get("/car_selection", response_class=HTMLResponse, name="car_selection")
+async def car_selection(request: Request, db: AsyncSession = Depends(get_session),
+                        access_token: Annotated[Optional[str], Cookie()] = None):
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
+
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to access car selection")
+
+    cars = await db.execute(select(CarORM))
+    cars = cars.scalars().all()
+
+    return templates.TemplateResponse("admin/car_selection.html", {
+        "request": request,
+        "cars": cars
+    })
+
+
+@router.get("/car_stats/{car_id}", response_class=HTMLResponse, name="get_car_stats")
 async def get_car_stats(request: Request, car_id: int, db: AsyncSession = Depends(get_session),
                         access_token: Annotated[Optional[str], Cookie()] = None):
-    user = None
-    if access_token:
-        username = auth.get_current_user(request)
-        user = User(username=username)
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
 
-    if user is None:
-        return templates.TemplateResponse('auth/login_form.html',
-                                          {'request': request,
-                                           'user': user})
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
 
-    car = await db.get(CarORM, car_id)
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to look car statistics")
+
+    car = await db.execute(select(CarORM).options(selectinload(CarORM.parking_history)).where(CarORM.id == car_id))
+    car = car.scalar()
+
     if not car:
-        return {"error": "Car not found", "status_code": 404}
+        return templates.TemplateResponse('mistake.html', {"request": request, "message": "Car not found"})
 
-    parking_history = await db.execute(select(ParkingHistoryORM).where(ParkingHistoryORM.car_id == car_id))
+    parking_history = await db.execute(
+        select(ParkingHistoryORM)
+        .options(joinedload(ParkingHistoryORM.bill))
+        .where(ParkingHistoryORM.car_id == car_id)
+    )
     history = parking_history.scalars().all()
 
-    return {
+    return templates.TemplateResponse("admin/car_stats.html", {
+        "request": request,
         "car_plate": car.car_plate,
-        "parking_history": [
-            {
-                "start_time": record.start_time,
-                "end_time": record.end_time,
-                "cost": record.bill
-            }
-            for record in history
-        ]
-    }
+        "parking_history": history
+    })
 
 
-@router.get("/parking_stats", response_class=HTMLResponse)
+
+
+@router.get("/parking_stats", response_class=HTMLResponse, name="get_parking_stats")
 async def get_parking_stats(request: Request, access_token: Annotated[Optional[str], Cookie()] = None,
                             db: AsyncSession = Depends(get_session)):
-    user = None
-    if access_token:
-        username = auth.get_current_user(request)
-        user = User(username=username)
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
 
-    if user is None:
-        return templates.TemplateResponse('auth/login_form.html',
-                                          {'request': request,
-                                           'user': user})
-    try:
-        total_parkings = await db.execute(select(ParkingHistoryORM))
-        total_cost = await db.execute(select(BillingORM.cost))
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
 
-        total_parkings_count = total_parkings.scalars().count()
-        total_earned = sum(bill.cost for bill in total_cost.scalars())
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to look parking statistics")
 
-        return {
-            "total_parkings": total_parkings_count,
-            "total_earned": total_earned
-        }
-    except Exception as e:
-        return {"error": f"An error occurred: {str(e)}", "status_code": 500}
+    total_parkings_count = await db.scalar(select(func.count(ParkingHistoryORM.id)))
+
+    total_cost = await db.execute(select(BillingORM.cost))
+    total_earned = sum(bill for bill in total_cost.scalars())
+
+    return templates.TemplateResponse("admin/parking_stats.html", {
+        "request": request,
+        "total_parkings": total_parkings_count,
+        "total_earned": total_earned
+    })
 
 
-@router.get("/active_users_stats", response_class=HTMLResponse)
+@router.get("/active_users_stats", response_class=HTMLResponse, name="get_active_users_stats")
 async def get_active_users_stats(request: Request, access_token: Annotated[Optional[str], Cookie()] = None,
                                  db: AsyncSession = Depends(get_session)):
-    user = None
-    if access_token:
-        username = auth.get_current_user(request)
-        user = User(username=username)
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
 
-    if user is None:
-        return templates.TemplateResponse('auth/login_form.html',
-                                          {'request': request,
-                                           'user': user})
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to view user statistics")
+
     last_month = datetime.now() - timedelta(days=30)
+
     active_users = await db.execute(
-        select(func.count(UserORM.id)).join(ParkingHistoryORM).where(ParkingHistoryORM.start_time >= last_month)
+        select(func.count(UserORM.id))
+        .select_from(ParkingHistoryORM)
+        .join(UserORM, ParkingHistoryORM.car_id == UserORM.id)
+        .where(ParkingHistoryORM.start_time >= last_month)
     )
+
     count_active_users = active_users.scalar()
 
-    return {"active_users_count": count_active_users}
+    return templates.TemplateResponse("admin/active_users_stats.html", {
+        "request": request,
+        "active_users_count": count_active_users
+    })
 
 
-@router.get("/banned_users_stats", response_class=HTMLResponse)
+@router.get("/banned_users_stats", response_class=HTMLResponse, name="get_banned_users_stats")
 async def get_banned_users_stats(request: Request, access_token: Annotated[Optional[str], Cookie()] = None,
                                  db: AsyncSession = Depends(get_session)):
-    user = None
-    if access_token:
-        username = auth.get_current_user(request)
-        user = User(username=username)
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
 
-    if user is None:
-        return templates.TemplateResponse('auth/login_form.html',
-                                          {'request': request,
-                                           'user': user})
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to look user statistics")
     banned_users = await db.execute(
         select(func.count(UserORM.id)).where(UserORM.is_banned == True)
     )
     count_banned_users = banned_users.scalar()
 
-    return {"banned_users_count": count_banned_users}
+    return templates.TemplateResponse("admin/banned_users_stats.html", {
+        "request": request,
+        "banned_users_count": count_banned_users
+    })
 
 
-@router.get("/parking_occupancy_stats", response_class=HTMLResponse)
+@router.get("/parking_occupancy_stats", response_class=HTMLResponse, name="get_parking_occupancy_stats")
 async def get_parking_occupancy_stats(request: Request, access_token: Annotated[Optional[str], Cookie()] = None,
-                                      db: AsyncSession = Depends(get_session), period: str = "day"):
-    user = None
-    if access_token:
-        username = auth.get_current_user(request)
-        user = User(username=username)
+                                      db: AsyncSession = Depends(get_session), period: str = "week"):
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
 
-    if user is None:
-        return templates.TemplateResponse('auth/login_form.html',
-                                          {'request': request,
-                                           'user': user})
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to look parking statistics")
+
     now = datetime.now()
 
     if period == "week":
@@ -564,43 +641,50 @@ async def get_parking_occupancy_stats(request: Request, access_token: Annotated[
     )
     total_parkings_count = total_parkings.scalar()
 
-    average_occupancy = (total_parkings_count / (settings.TOTAL_SPOTS * 24)) * 100
+    average_occupancy = (total_parkings_count / (settings.total_spots * 24)) * 100
 
-    return {"average_occupancy_percent": average_occupancy}
+    return templates.TemplateResponse("admin/parking_occupancy_stats.html", {
+        "request": request,
+        "average_occupancy_percent": average_occupancy,
+        "period": period
+    })
 
 
-@router.get("/max_cars_day_stats", response_class=HTMLResponse)
+@router.get("/max_cars_day_stats", response_class=HTMLResponse, name="get_max_cars_day_stats")
 async def get_max_cars_per_day_stats(request: Request, access_token: Annotated[Optional[str], Cookie()] = None,
                                      db: AsyncSession = Depends(get_session)):
-    user = None
-    if access_token:
-        username = auth.get_current_user(request)
-        user = User(username=username)
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
 
-    if user is None:
-        return templates.TemplateResponse('auth/login_form.html',
-                                          {'request': request,
-                                           'user': user})
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to look cars statistics")
     max_cars = await db.execute(
         select(func.count(ParkingHistoryORM.id)).group_by(func.date(ParkingHistoryORM.start_time))
     )
     max_cars_per_day = max_cars.scalar()
 
-    return {"max_cars_in_a_day": max_cars_per_day}
+    return templates.TemplateResponse("admin/max_cars_day_stats.html", {
+        "request": request,
+        "max_cars_in_a_day": max_cars_per_day
+    })
 
 
-@router.get("/peak_activity_time_stats", response_class=HTMLResponse)
+@router.get("/peak_activity_time_stats", response_class=HTMLResponse, name="get_peak_activity_time_stats")
 async def get_peak_activity_time_stats(request: Request, access_token: Annotated[Optional[str], Cookie()] = None,
                                        db: AsyncSession = Depends(get_session)):
-    user = None
-    if access_token:
-        username = auth.get_current_user(request)
-        user = User(username=username)
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
 
-    if user is None:
-        return templates.TemplateResponse('auth/login_form.html',
-                                          {'request': request,
-                                           'user': user})
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to look statistics")
     peak_time = await db.execute(
         select(func.extract('hour', ParkingHistoryORM.start_time), func.count(ParkingHistoryORM.id))
         .group_by(func.extract('hour', ParkingHistoryORM.start_time))
@@ -608,21 +692,25 @@ async def get_peak_activity_time_stats(request: Request, access_token: Annotated
     )
     most_active_hour, count = peak_time.first()
 
-    return {"most_active_hour": most_active_hour, "parking_count": count}
+    return templates.TemplateResponse("admin/peak_activity_time_stats.html", {
+        "request": request,
+        "most_active_hour": most_active_hour,
+        "parking_count": count
+    })
 
 
-@router.get("/average_parking_duration_stats", response_class=HTMLResponse)
+@router.get("/average_parking_duration_stats", response_class=HTMLResponse, name="get_average_parking_duration_stats")
 async def get_average_parking_duration_stats(request: Request, access_token: Annotated[Optional[str], Cookie()] = None,
                                              db: AsyncSession = Depends(get_session)):
-    user = None
-    if access_token:
-        username = auth.get_current_user(request)
-        user = User(username=username)
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
 
-    if user is None:
-        return templates.TemplateResponse('auth/login_form.html',
-                                          {'request': request,
-                                           'user': user})
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to look statistics")
     average_duration = await db.execute(
         select(func.avg(func.extract('epoch', ParkingHistoryORM.end_time - ParkingHistoryORM.start_time)))
         .where(ParkingHistoryORM.end_time.isnot(None))
@@ -631,21 +719,24 @@ async def get_average_parking_duration_stats(request: Request, access_token: Ann
 
     average_duration_hours = average_duration_seconds / 3600 if average_duration_seconds else 0
 
-    return {"average_parking_duration_hours": average_duration_hours}
+    return templates.TemplateResponse("admin/average_parking_duration_stats.html", {
+        "request": request,
+        "average_parking_duration_hours": average_duration_hours
+    })
 
 
-@router.get("/parking_count_stats", response_class=HTMLResponse)
+@router.get("/parking_count_stats", response_class=HTMLResponse, name="get_parking_count_stats")
 async def get_parking_count_stats(request: Request, access_token: Annotated[Optional[str], Cookie()] = None,
-                                  db: AsyncSession = Depends(get_session), period: str = "day"):
-    user = None
-    if access_token:
-        username = auth.get_current_user(request)
-        user = User(username=username)
+                                  db: AsyncSession = Depends(get_session), period: str = "week"):
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
 
-    if user is None:
-        return templates.TemplateResponse('auth/login_form.html',
-                                          {'request': request,
-                                           'user': user})
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to look parking statistics")
     now = datetime.now()
 
     if period == "week":
@@ -660,50 +751,33 @@ async def get_parking_count_stats(request: Request, access_token: Annotated[Opti
     )
     count = parking_count.scalar()
 
-    return {"parking_count": count, "period": period}
+    return templates.TemplateResponse("admin/parking_count_stats.html", {
+        "request": request,
+        "parking_count": count,
+        "period": period
+    })
 
 
-@router.get("/available_spots_stats", response_class=HTMLResponse)
+@router.get("/available_spots_stats", response_class=HTMLResponse, name="get_available_spots_stats")
 async def get_available_spots_stats(request: Request, access_token: Annotated[Optional[str], Cookie()] = None,
                                     db: AsyncSession = Depends(get_session)):
-    user = None
-    if access_token:
-        username = auth.get_current_user(request)
-        user = User(username=username)
+    if not access_token:
+        return templates.TemplateResponse('auth/login_form.html', {'request': request, 'user': None})
 
-    if user is None:
-        return templates.TemplateResponse('auth/login_form.html',
-                                          {'request': request,
-                                           'user': user})
+    current_username = auth.get_current_user(request)
+    res = await db.execute(select(UserORM).where(UserORM.username == current_username))
+    current_user = res.scalar()
+
+    if not current_user or not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to look parking statistics")
     occupied_spots = await db.execute(
         select(func.count(ParkingHistoryORM.id)).where(ParkingHistoryORM.end_time.is_(None))
     )
     occupied_spots_count = occupied_spots.scalar()
 
-    available_spots = settings.TOTAL_SPOTS - occupied_spots_count
+    available_spots = settings.total_spots - occupied_spots_count
 
-    return {"available_spots": available_spots}
-
-
-@router.get("/average_car_parking_duration_stats", response_class=HTMLResponse)
-async def get_average_car_parking_duration_stats(request: Request,
-                                                 access_token: Annotated[Optional[str], Cookie()] = None,
-                                                 db: AsyncSession = Depends(get_session)):
-    user = None
-    if access_token:
-        username = auth.get_current_user(request)
-        user = User(username=username)
-
-    if user is None:
-        return templates.TemplateResponse('auth/login_form.html',
-                                          {'request': request,
-                                           'user': user})
-    average_duration = await db.execute(
-        select(func.avg(func.extract('epoch', ParkingHistoryORM.end_time - ParkingHistoryORM.start_time)))
-        .where(ParkingHistoryORM.end_time.isnot(None))
-    )
-    average_duration_seconds = average_duration.scalar()
-
-    average_duration_hours = average_duration_seconds / 3600 if average_duration_seconds else 0
-
-    return {"average_car_parking_duration_hours": average_duration_hours}
+    return templates.TemplateResponse("admin/available_spots_stats.html", {
+        "request": request,
+        "available_spots": available_spots
+    })

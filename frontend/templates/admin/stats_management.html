@@ -1,0 +1,68 @@
+<h1>Управління статистикою</h1>
+
+<!-- Блок загальної статистики по паркуванню -->
+<section>
+    <div hx-get="{{ url_for('get_parking_stats') }}" hx-trigger="load" hx-swap="innerHTML">
+    </div>
+</section>
+
+<!-- Статистика користувачів -->
+<section>
+    <div hx-get="{{ url_for('user_selection') }}" hx-trigger="load" hx-swap="innerHTML">
+    </div>
+</section>
+
+<!-- Статистика автомобілів -->
+<section>
+    <div hx-get="{{ url_for('car_selection') }}" hx-trigger="load" hx-swap="innerHTML">
+    </div>
+</section>
+
+<!-- Статистика активних користувачів -->
+<section>
+    <div hx-get="{{ url_for('get_active_users_stats') }}" hx-trigger="load" hx-swap="innerHTML">
+    </div>
+</section>
+
+<!-- Статистика забанених користувачів -->
+<section>
+    <div hx-get="{{ url_for('get_banned_users_stats') }}" hx-trigger="load" hx-swap="innerHTML">
+    </div>
+</section>
+
+<!-- Заповнюваність паркування -->
+<section>
+    <div hx-get="{{ url_for('get_parking_occupancy_stats') }}" hx-trigger="load" hx-swap="innerHTML">
+    </div>
+</section>
+
+<!-- Статистика по найбільшому дню паркування -->
+<section>
+    <div hx-get="{{ url_for('get_max_cars_day_stats') }}" hx-trigger="load" hx-swap="innerHTML">
+    </div>
+</section>
+
+<!-- Піковий час активності паркування -->
+<section>
+    <div hx-get="{{ url_for('get_peak_activity_time_stats') }}" hx-trigger="load" hx-swap="innerHTML">
+    </div>
+</section>
+
+<!-- Середня тривалість паркування -->
+<section>
+    <div hx-get="{{ url_for('get_average_parking_duration_stats') }}" hx-trigger="load" hx-swap="innerHTML">
+    </div>
+</section>
+
+<!-- Кількість паркувань -->
+<section>
+    <div hx-get="{{ url_for('get_parking_count_stats') }}" hx-trigger="load" hx-swap="innerHTML">
+    </div>
+</section>
+
+<!-- Кількість вільних місць -->
+<section>
+    <div hx-get="{{ url_for('get_available_spots_stats') }}" hx-trigger="load" hx-swap="innerHTML">
+    </div>
+</section>
+
