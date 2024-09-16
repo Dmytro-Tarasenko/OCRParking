@@ -22,7 +22,7 @@
                         <a href="{{ url_for('get_car_bills', car_plate=car.car_plate) }}" class="button">Рахунки</a>
                     </li>
                     <li>
-                        <a href="{{ url_for('about')}}" class="button">Видалити</a>
+                        <a href="{{ url_for('get_car_delete_form', car_plate=car.car_plate)}}" class="button">Видалити</a>
                     </li>
                 </ul>
             </th>

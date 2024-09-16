@@ -1,12 +1,17 @@
 from pathlib import Path
+from collections import namedtuple
+from typing import List
+
 import numpy as np
-import pytesseract
+# import pytesseract
 import easyocr
 import torch
 import cv2
 
 model_path = Path(__file__).parent / 'model' / 'model.pth'
 weights_path = Path(__file__).parent / 'model' / 'best.pt'
+
+Recognition = namedtuple('Recognition', ['box', 'text', 'confidence'])
 
 model = torch.load(model_path, weights_only=False)
 # model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True, trust_repo=True)
@@ -41,11 +46,11 @@ def extract_license_plate(image, best_box):
     return
 
 
-def recognize_text_tes(image):
-    config = '--psm 6 --oem 3 -l eng'
-    full_text = pytesseract.image_to_string(image, config=config)
-    num = ''.join([i for i in full_text if i.isdigit() or i.isalpha()])
-    return num
+# def recognize_text_tes(image):
+#     config = '--psm 6 --oem 3 -l eng'
+#     full_text = pytesseract.image_to_string(image, config=config)
+#     num = ''.join([i for i in full_text if i.isdigit() or i.isalpha()])
+#     return num
 
 
 def recognize_text_easy(image):
@@ -54,15 +59,16 @@ def recognize_text_easy(image):
     return num
 
 
-def get_plate_number(image) -> str:
+def get_plate_number(image) -> List[Recognition]:
     nparr = np.fromstring(image, np.uint8)  
     image = cv2.imdecode(nparr, cv2.IMREAD_ANYCOLOR)
     box = detect_license_plates(image)
     plate_img = extract_license_plate(image, box)
-    license_plate = recognize_text_easy(plate_img)
-    print(license_plate)
     
-    return 'JSNINJA'
+    license_plate = [Recognition(*i) for i in recognize_text_easy(plate_img)]
+    print(license_plate[0].text)
+    
+    return license_plate
 
 
 if __name__ == '__main__':

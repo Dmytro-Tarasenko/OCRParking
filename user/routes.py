@@ -400,14 +400,113 @@ async def get_car_parkings(
                                       })
 
 
-@router.delete('/{car_plate:str}')
+@router.get('/delete/{car_plate:str}')
+async def get_car_delete_form(
+    request: Request,
+    car_plate: str,
+    db: Annotated[AsyncSession, Depends(get_session)],
+    access_token: Annotated[Optional[str], Cookie()] = None
+) -> Any:
+    user = None
+    if access_token:
+        username = auth.get_current_user(request)
+        user = User(username=username)
+    if user is None:
+        return templates.TemplateResponse('auth/login_form.html',
+                                          {'request': request,
+                                           'user': user})
+
+    stmnt = select(UserORM).where(UserORM.username == user.username)
+    res = await db.execute(stmnt)
+    user_db = res.scalar_one_or_none()
+
+    stmnt = select(CarORM).where(
+        CarORM.car_plate == car_plate,
+        CarORM.user_id == user_db.id
+    )
+    res = await db.execute(stmnt)
+    car_db = res.scalar_one_or_none()
+
+    if car_db is None:
+        return templates.TemplateResponse(
+            'user/delete_car_form.html',
+            {'request': request,
+             'car': car_plate,
+             'user': user,
+             'error': f"Car {car_plate} is not registered for you."}
+             )
+    
+    return templates.TemplateResponse(
+        'user/delete_car_form.html',
+        {
+            'request': request,
+            'user': user,
+            'car': car_db.car_plate
+        }
+    )
+
+
+@router.delete('/delete/{car_plate:str}')
 async def delete_car(
     request: Request,
     car_plate: str,
     db: Annotated[AsyncSession, Depends(get_session)],
     access_token: Annotated[Optional[str], Cookie()] = None
 ) -> Any:
-    pass
+    user = None
+    if access_token:
+        username = auth.get_current_user(request)
+        user = User(username=username)
+    
+    if user is None:
+        return templates.TemplateResponse('auth/login_form.html',
+                                          {'request': request,
+                                           'user': user})
+
+    stmnt = select(UserORM).where(UserORM.username == user.username)
+    res = await db.execute(stmnt)
+    user_db = res.scalar_one_or_none()
+
+    stmnt = select(CarORM).where(
+        CarORM.car_plate == car_plate,
+        CarORM.user_id == user_db.id
+    )
+    res = await db.execute(stmnt)
+    car_db = res.scalar_one_or_none()
+
+    stmnt = (
+        select(BillingORM)
+        .join(ParkingHistoryORM)
+        .where(
+            BillingORM.is_paid.is_not(True),
+            ParkingHistoryORM.car_id == car_db.id
+        )
+    )
+    res = await db.execute(stmnt)
+    bills_db = res.scalars().first()
+
+    if bills_db:
+        return templates.TemplateResponse(
+            'user/car_deleted.html',
+            {
+                'request': request,
+                'user': user,
+                'error': f"Car {car_db.car_plate} could not be deleted due to unpaid bills."
+            }
+        )
+
+    await db.delete(car_db)
+    await db.commit()
+
+    return templates.TemplateResponse(
+        'user/car_deleted.html',
+        {
+            'request': request,
+            'car': car_plate,
+            'user': user
+        }
+    )
+    
 
 
 @router.get('/messages')

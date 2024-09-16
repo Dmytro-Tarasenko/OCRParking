@@ -1,3 +1,4 @@
+import re
 from typing import Annotated, Any
 from datetime import datetime
 
@@ -17,6 +18,8 @@ from db_models.db import get_session
 import cameras.utils as utils
 from ocr_ml.plate_recognition import get_plate_number
 
+
+CAR_PLATE_REGEX = r"[^0-9A-Z]"
 
 router = APIRouter(prefix='/cameras',
                    default_response_class=HTMLResponse,
@@ -38,8 +41,15 @@ async def post_enter_camera(
     db: Annotated[AsyncSession, Depends(get_session)]
 ) -> Any:
     image = await car_plate.read()
-    car_plate = get_plate_number(image)
-    is_user = await utils.is_user(car_plate, db)
+    car_plates = get_plate_number(image)
+
+    car_plate = ""
+    is_user = False
+    for plate in car_plates:
+        car_plate = re.sub(CAR_PLATE_REGEX, "", plate.text)
+        is_user = await utils.is_user(car_plate.upper(), db)
+        if is_user:
+            break
 
     if not is_user:
         return templates.TemplateResponse(
@@ -124,11 +134,19 @@ async def post_enter_camera(
 @router.post('/leave')
 async def post_leave_camera(
     request: Request,
-    car_plate: Annotated[str, Form()],
+    car_plate: Annotated[UploadFile, File()],
     db: Annotated[AsyncSession, Depends(get_session)]
 ) -> Any:
-    car_plate = car_plate.upper()
-    is_user = await utils.is_user(car_plate, db)
+    image = await car_plate.read()
+    car_plates = get_plate_number(image)
+
+    car_plate = ""
+    is_user = False
+    for plate in car_plates:
+        car_plate = re.sub(CAR_PLATE_REGEX, "", plate.text)
+        is_user = await utils.is_user(car_plate.upper(), db)
+        if is_user:
+            break
 
     if not is_user:
         return templates.TemplateResponse(

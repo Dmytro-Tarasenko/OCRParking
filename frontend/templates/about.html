@@ -14,7 +14,7 @@
         <div class="feature-cards">
             <!-- OCR-розпізнавання -->
             <div class="feature-card">
-                <img src="img\ocr.png" alt="OCR-розпізнавання">
+                <img src="{{ url_for('static', path='img/ocr.png')}}" alt="OCR-розпізнавання">
                 <h3>OCR-розпізнавання</h3>
                 <p>
                     Розпізнавання номерних знаків у реальному часі за допомогою технологій OCR 
@@ -24,14 +24,14 @@
 
             <!-- Моніторинг парковки -->
             <div class="feature-card">
-                <img src="img/monitoring.png" alt="Моніторинг парковки">
+                <img src="{{ url_for('static', path='img/monitoring.png')}}" alt="Моніторинг парковки">
                 <h3>Моніторинг парковки</h3>
                 <p>Відстеження та управління станом парковки.</p>
             </div>
 
             <!-- Зручний інтерфейс -->
             <div class="feature-card">
-                <img src="img/interface.png" alt="Зручний інтерфейс">
+                <img src="{{ url_for('static', path='img/interface.png')}}" alt="Зручний інтерфейс">
                 <h3>Зручний інтерфейс</h3>
                 <p>
                     Інтуїтивно зрозумілий інтерфейс для адміністраторів та користувачів.
@@ -40,7 +40,7 @@
 
             <!-- Безпека -->
             <div class="feature-card">
-                <img src="img/security.png" alt="Безпека">
+                <img src="{{ url_for('static', path='img/security.png')}}" alt="Безпека">
                 <h3>Безпека</h3>
                 <p>
                     Ведення журналу подій для забезпечення безпеки.
@@ -48,7 +48,6 @@
             </div>
         </div>
     </section>
-
     <section class="mission">
         <h2>Місія та цілі</h2>
         <p>
