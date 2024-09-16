@@ -1,11 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
-        <div style="display: inline; padding: auto;">
-          <div style="display: inline; padding: auto;">
-            <h2>Паркомісця</h2>
-            <p>вільні 15 з 30</p>
+        <div>
+          <div class="parking-info">
+            <h2 class="parking-title">Паркомісця</h2>
+            <p class="parking-status">вільні 15 з 30</p>
         </div>
-        <div id="turnpike" style="display: inline; width: 50%; margin: auto;"
+        <div id="turnpike" class="barrier-info"
         hx-get="{{url_for('get_turnpike_down')}}"
         hx-swap="innerHTML"
         hx-trigger="load"
