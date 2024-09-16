@@ -1,13 +1,26 @@
 {% block content %}
-<h2>Оберіть автомобіль для перегляду статистики</h2>
+<div class="car-selection">
+  <h2 class="section-title">Оберіть автомобіль для перегляду статистики</h2>
 
-<form action="{{ url_for('get_car_stats', car_id=0) }}" method="get">
-    <label for="car_id">Автомобілі:</label>
-    <select id="car_id" name="car_id" onchange="window.location.href='/admin/car_stats/' + this.value">
+  <form
+    action="{{ url_for('get_car_stats', car_id=0) }}"
+    method="get"
+    class="form-container"
+  >
+    <div class="form-group">
+      <label for="car_id" class="form-label">Автомобілі:</label>
+      <select
+        id="car_id"
+        name="car_id"
+        class="form-select"
+        onchange="window.location.href='/admin/car_stats/' + this.value"
+      >
         <option value="" disabled selected>Виберіть автомобіль</option>
         {% for car in cars %}
         <option value="{{ car.id }}">{{ car.car_plate }}</option>
         {% endfor %}
-    </select>
-</form>
+      </select>
+    </div>
+  </form>
+</div>
 {% endblock %}
