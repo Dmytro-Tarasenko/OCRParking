@@ -25,6 +25,7 @@ class ParkingInfoExt(ParkingInfo):
 
 
 class BillingInfo(pydantic.BaseModel):
+    id: int
     username: str
     cost: float
     history: ParkingInfo

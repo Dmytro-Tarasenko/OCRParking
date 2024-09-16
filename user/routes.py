@@ -185,8 +185,7 @@ async def get_user_bills(
     stmnt = (
         select(BillingORM)
         .where(BillingORM.user_id == user_db.id,
-               BillingORM.is_sent.is_(True),
-               BillingORM.is_paid.is_not(True))
+               BillingORM.is_sent.is_(True))
         .options(selectinload(BillingORM.user),
                  selectinload(BillingORM.history),
                  (selectinload(BillingORM.history)
@@ -214,7 +213,8 @@ async def get_user_bills(
             start_time=history.start_time.strftime("%Y-%m-%d %H:%M:%S"),
             end_time=end_time
             )
-        bill_entry = BillingInfo(username=user.username,
+        bill_entry = BillingInfo(id=bill.id,
+                                 username=user.username,
                                  cost=round(bill.cost, 2),
                                  history=history_entry,
                                  status=status)
@@ -266,6 +266,7 @@ async def get_car_bills(
              'user': user,
              'error': f"Car {car_plate} is not registered for you."}
              )
+
     stmnt = (
         select(BillingORM)
         .join(ParkingHistoryORM)
@@ -295,7 +296,8 @@ async def get_car_bills(
             start_time=history.start_time.strftime("%Y-%m-%d %H:%M:%S"),
             end_time=end_time
             )
-        bill_entry = BillingInfo(username=user.username,
+        bill_entry = BillingInfo(id=bill.id,
+                                 username=user.username,
                                  cost=bill.cost,
                                  history=history_entry,
                                  status=status)
