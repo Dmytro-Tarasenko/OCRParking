@@ -10,7 +10,6 @@ from fastapi import (APIRouter,
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from auth.auth import Authentication
-# from db_models.models import User as UserModel
 from db_models.orms import UserORM
 from schemas.auth import UserLogin, UserCreate, User
 from db_models.db import get_session
@@ -26,6 +25,16 @@ router = APIRouter(prefix="/auth",
 @router.get('/register')
 async def get_register_form(response: Response,
                             request: Request):
+    """
+        Serve the registration form page.
+
+        Args:
+            response (Response): The HTTP response object.
+            request (Request): The HTTP request object.
+
+        Returns:
+            TemplateResponse: Renders the registration form template.
+        """
     return templates.TemplateResponse('auth/register_form.html',
                                       context={'request': request})
 
@@ -37,6 +46,20 @@ async def register_user(request: Request,
                         password: Annotated[str, Form()],
                         db: Annotated[AsyncSession, Depends(get_session)]
                         ):
+    """
+        Handle user registration.
+
+        Args:
+            request (Request): The HTTP request object.
+            username (str): The entered username.
+            email (str): The entered email.
+            password (str): The entered password.
+            db (AsyncSession): The database session.
+
+        Returns:
+            TemplateResponse: Renders the registration success page or returns
+            an error message if the username is already taken.
+        """
     user = UserCreate(username=username,
                       password=password,
                       email=email)
@@ -65,7 +88,16 @@ async def register_user(request: Request,
 @router.get("/login")
 async def get_login_form(response: Response,
                          request: Request):
+    """
+        Serve the login form page.
 
+        Args:
+            response (Response): The HTTP response object.
+            request (Request): The HTTP request object.
+
+        Returns:
+            TemplateResponse: Renders the login form template.
+        """
     return templates.TemplateResponse('auth/login_form.html',
                                       context={'request': request})
 
@@ -76,6 +108,20 @@ async def login(response: Response,
                 username: Annotated[str, Form()],
                 password: Annotated[str, Form()],
                 db: AsyncSession = Depends(get_session)):
+    """
+        Handle user login.
+
+        Args:
+            response (Response): The HTTP response object.
+            request (Request): The HTTP request object.
+            username (str): The entered username.
+            password (str): The entered password.
+            db (AsyncSession): The database session.
+
+        Returns:
+            TemplateResponse: Renders the user dashboard page or returns
+            an error message if login credentials are invalid.
+        """
     user_login = UserLogin(username=username,
                            password=password)
     result = await auth.login(response, user_login, db)
@@ -94,6 +140,19 @@ async def login(response: Response,
 
 @router.post("/refresh")
 async def refresh_token(response: Response, request: Request):
+    """
+        Refresh the access token using the refresh token.
+
+        Args:
+            response (Response): The HTTP response object.
+            request (Request): The HTTP request object.
+
+        Raises:
+            HTTPException: If no refresh token is found or the token is invalid.
+
+        Returns:
+            dict: The new access token.
+        """
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
         raise HTTPException(status_code=401, detail="No refresh token found")
@@ -105,6 +164,16 @@ async def refresh_token(response: Response, request: Request):
 
 @router.get("/admin")
 async def admin_route(request: Request, db: AsyncSession = Depends(get_session)):
+    """
+        Admin-only route to display admin-specific content.
+
+        Args:
+            request (Request): The HTTP request object.
+            db (AsyncSession): The database session.
+
+        Returns:
+            dict: A welcome message for the admin.
+        """
     user = await auth.is_admin(request, db)
     return {"msg": f"Hello, {user.username}. You are an admin!"}
 
@@ -113,7 +182,17 @@ async def admin_route(request: Request, db: AsyncSession = Depends(get_session))
 async def logout_user(
         response: Response,
         request: Request
-        ) -> Any:
+) -> Any:
+    """
+        Log the user out by removing their tokens.
+
+        Args:
+            response (Response): The HTTP response object.
+            request (Request): The HTTP request object.
+
+        Returns:
+            TemplateResponse: Renders the homepage with the user logged out.
+        """
     res = await auth.logout(response)
     user = None
     if res:
@@ -123,7 +202,7 @@ async def logout_user(
         ret.delete_cookie('access_token')
         ret.delete_cookie('refresh_token')
         return ret
-    
+
     return templates.TemplateResponse('index.html',
                                       {'request': request,
                                        'user': user})
