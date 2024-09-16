@@ -37,14 +37,20 @@ router = APIRouter(prefix='/user',
 
 
 @router.get('/')
-def get_user_page(
+async def get_user_page(
     request: Request,
+    db: Annotated[AsyncSession, Depends(get_session)],
     access_token: Annotated[str | None, Cookie()] = None
 ) -> Any:
     user = None
     if access_token:
         username = auth.get_current_user(request)
         user = User(username=username)
+    
+    stmnt = select(UserORM).where(UserORM.username == user.username)
+    res = await db.execute(stmnt)
+    user_db = res.scalar_one_or_none()
+    user.is_admin = user_db.is_admin
     
     return templates.TemplateResponse('user/user.html',
                                       {'request': request,

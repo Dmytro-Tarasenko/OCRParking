@@ -1,23 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
-<header>
+<header class="header">
     <h1>Панель адміністратора</h1>
     <nav>
-        <ul>
-            <li><a href="#" class="button" hx-get="{{ url_for('get_user_management') }}" hx-target="#admin-content">Користувачі</a>
+        <ul class="menu">
+            <li><a href="{{ url_for('get_user_management') }}" class="button">Користувачі</a>
             </li>
-            <li><a href="#" class="button" hx-get="{{ url_for('get_tariff_management') }}" hx-target="#admin-content">Тарифи</a>
+            <li><a href="{{ url_for('get_tariff_management') }}" class="button">Тарифи</a>
             </li>
-            <li><a href="#" class="button" hx-get="{{ url_for('get_blacklist_management') }}"
-                   hx-target="#admin-content">Чорний список</a></li>
-            <li><a href="#" class="button" hx-get="{{ url_for('get_stats_management') }}"
-                   hx-target="#admin-content">Статистика</a></li>
+            <li><a href="{{ url_for('get_blacklist_management') }}" class="button">Чорний список</a></li>
+            <li><a href="{{ url_for('get_stats_management') }}" class="button">Статистика</a></li>
             <li><a href="{{ url_for('logout') }}" class="button">Вийти</a></li>
         </ul>
     </nav>
 </header>
 
-<main>
+<main class="main">
     <section id="admin-content">
         <h2>Ласкаво просимо до панелі адміністратора</h2>
         <p>Оберіть розділ для управління з меню вище.</p>

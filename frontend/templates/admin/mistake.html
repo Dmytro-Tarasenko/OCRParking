@@ -1,6 +1,10 @@
 <!-- templates/mistake.html -->
-% block content %}
-<h2>Помилка</h2>
-<p>{{ message }}</p>
-<a href="{{ url_for('index') }}">Повернутися на головну сторінку</a>
+{% extends "base.html" %} {% block content %}
+<div class="error-message">
+  <h2>Помилка</h2>
+  <p>{{ message }}</p>
+  <a href="{{ url_for('index') }}" class="btn-primary"
+    >Повернутися на головну сторінку</a
+  >
+</div>
 {% endblock %}
