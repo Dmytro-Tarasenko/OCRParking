@@ -1,7 +1,8 @@
+import re
 from typing import Annotated, Any
 from datetime import datetime
 
-from fastapi import Request, Response, Depends, Form
+from fastapi import Request, Depends, Form, UploadFile, File
 from fastapi.routing import APIRouter
 from fastapi.responses import HTMLResponse
 from sqlalchemy import select
@@ -15,7 +16,10 @@ from db_models.orms import UserORM, CarORM, ParkingHistoryORM, BillingORM
 from db_models.db import get_session
 
 import cameras.utils as utils
+from ocr_ml.plate_recognition import get_plate_number
 
+
+CAR_PLATE_REGEX = r"[^0-9A-Z]"
 
 router = APIRouter(prefix='/cameras',
                    default_response_class=HTMLResponse,
@@ -33,15 +37,23 @@ async def cameras_index(
 @router.post('/enter')
 async def post_enter_camera(
     request: Request,
-    car_plate: Annotated[str, Form()],
+    car_plate: Annotated[UploadFile, File()],
     db: Annotated[AsyncSession, Depends(get_session)]
 ) -> Any:
-    car_plate = car_plate.upper()
-    is_user = await utils.is_user(car_plate, db)
+    image = await car_plate.read()
+    car_plates = get_plate_number(image)
+
+    car_plate = ""
+    is_user = False
+    for plate in car_plates:
+        car_plate = re.sub(CAR_PLATE_REGEX, "", plate.text)
+        is_user = await utils.is_user(car_plate.upper(), db)
+        if is_user:
+            break
 
     if not is_user:
         return templates.TemplateResponse(
-           'cameras/cameras.html',
+           'cameras/turnpike_down.html',
            {
                'request': request,
                'error': f"Car {car_plate} does not registered."
@@ -61,7 +73,7 @@ async def post_enter_camera(
         car_db = res.scalar_one()
 
         return templates.TemplateResponse(
-            'cameras/cameras.html',
+            'cameras/turnpike_down.html',
             {
                 'request': request,
                 'error': f"User {car_db.owner.username} is banned!"
@@ -88,7 +100,7 @@ async def post_enter_camera(
                                                   ban_message,
                                                   db)
         return templates.TemplateResponse(
-           'cameras/cameras.html',
+           'cameras/turnpike_down.html',
            {
                'request': request,
                'error': (f"Car {car_plate} registered as parked."
@@ -111,9 +123,8 @@ async def post_enter_camera(
     db.refresh(parking)
     await db.commit()
 
-    # TODO: Turnpike action
     return templates.TemplateResponse(
-        'cameras/cameras.html',
+        'cameras/turnpike_up.html',
         {
             'request': request
             }
@@ -123,15 +134,23 @@ async def post_enter_camera(
 @router.post('/leave')
 async def post_leave_camera(
     request: Request,
-    car_plate: Annotated[str, Form()],
+    car_plate: Annotated[UploadFile, File()],
     db: Annotated[AsyncSession, Depends(get_session)]
 ) -> Any:
-    car_plate = car_plate.upper()
-    is_user = await utils.is_user(car_plate, db)
+    image = await car_plate.read()
+    car_plates = get_plate_number(image)
+
+    car_plate = ""
+    is_user = False
+    for plate in car_plates:
+        car_plate = re.sub(CAR_PLATE_REGEX, "", plate.text)
+        is_user = await utils.is_user(car_plate.upper(), db)
+        if is_user:
+            break
 
     if not is_user:
         return templates.TemplateResponse(
-           'cameras/cameras.html',
+           'cameras/turnpike_down.html',
            {
                'request': request,
                'error': f"Car {car_plate} does not registered."
@@ -151,7 +170,7 @@ async def post_leave_camera(
         car_db = res.scalar_one()
 
         return templates.TemplateResponse(
-            'cameras/cameras.html',
+            'cameras/turnpike_down.html',
             {
                 'request': request,
                 'error': f"User {car_db.owner.username} is banned!"
@@ -178,7 +197,7 @@ async def post_leave_camera(
                                                   ban_message,
                                                   db)
         return templates.TemplateResponse(
-           'cameras/cameras.html',
+           'cameras/turnpike_down.html',
            {
                'request': request,
                'error': (f"Car {car_plate} registered as out from parking."
@@ -187,7 +206,6 @@ async def post_leave_camera(
            }
         )
 
-    # TODO: Set end_time and billing info
     stmnt = (
         select(ParkingHistoryORM)
         .where(ParkingHistoryORM.car_id == car_db.id,
@@ -213,12 +231,25 @@ async def post_leave_camera(
     parking_db.bill.cost = cost
     parking_db.bill.is_sent = True
 
+    await utils.send_message(car_db.owner.id,
+                             parking_db.bill.id,
+                             db)
     await db.commit()
 
     # TODO: Turnpike action
     return templates.TemplateResponse(
-        'cameras/cameras.html',
+        'cameras/turnpike_up.html',
         {
             'request': request
             }
         )
+
+
+@router.get('/turnpike_down')
+async def get_turnpike_down(
+    request: Request
+) -> Any:
+    return templates.TemplateResponse(
+        'cameras/turnpike_down.html',
+        {'request': request}
+    )

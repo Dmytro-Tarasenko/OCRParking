@@ -101,7 +101,7 @@ async def set_unleaved_ban(car: CarORM, db: AsyncSession) -> int:
         (parking_db.end_time - parking_db.start_time).seconds // 60
     )
 
-    cost = tariff * time_diff_minutes
+    cost = round(tariff * time_diff_minutes, 2)
     parking_db.bill.cost = cost
     parking_db.bill.is_sent = True
     parking_db.bill.is_ban = True
@@ -129,7 +129,7 @@ async def set_unparked_ban(car: CarORM, db: AsyncSession) -> int:
 
     if len(bills_db) > 0:
         fine = max([bill.cost for bill in bills_db])
-        fine = fine if fine >= 150 else 150
+        fine = round(fine, 2) if fine >= 150 else 150
     else:
         fine = 150
 
@@ -186,3 +186,38 @@ async def send_ban_message(user_id: int,
     await db.commit()
 
     return message.id
+
+
+async def send_message(user_id: int,
+                       bill_id: int,
+                       db: AsyncSession) -> int:
+    stmnt = (
+        select(BillingORM)
+        .where(BillingORM.id == bill_id)
+        .options(
+            selectinload(BillingORM.history),
+            selectinload(BillingORM.history).selectinload(ParkingHistoryORM.car)
+        )
+        )
+    res = await db.execute(stmnt)
+    bill = res.scalar_one()
+
+    start_date = bill.history.start_time.strftime('%Y-%m-%d')
+
+    message = (f" Сплатіть рахунок № {bill.id} на суму {bill.cost}"
+               + f" за паркування автомобіля {bill.history.car.car_plate}"
+               + f" початок {start_date}."
+               )
+
+    message = ServiceMessageORM(
+        message=message,
+        user_id=user_id,
+        bill_id=bill.id,
+        is_ban=False
+    )
+
+    db.add(message)
+    await db.commit()
+
+    return message.id
+

@@ -1,0 +1,6 @@
+{% if error %}
+<p>{{ error }}</p>
+{% else %}
+<p>Автомобіль з номером <b>{{car}}</b> видалено з вашого акаунту!</p>
+{% endif %}
+<a class="button" href="{{ url_for('get_user_page')}}">На власну сторінку</a>
