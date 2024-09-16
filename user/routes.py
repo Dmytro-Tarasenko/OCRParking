@@ -45,6 +45,7 @@ def get_user_page(
     if access_token:
         username = auth.get_current_user(request)
         user = User(username=username)
+    
     return templates.TemplateResponse('user/user.html',
                                       {'request': request,
                                        'user': user})
