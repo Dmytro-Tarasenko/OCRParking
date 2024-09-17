@@ -5,31 +5,34 @@
     {{ error }}
 </h2>
 {% else %}
-{% if parkings %}
-<h2>Історія паркувань автомобіля {{ car }}</h2>
-<table hx-indicator=".htmx-indicator">
+<div class="car-statistics">
+    <h2 class="section-title">Історія паркувань автомобіля</h2>
+    <p class="car-plate">Номерний знак: <strong>{{ car }}</strong></p>
+<table hx-indicator=".htmx-indicator" class="parking-history-table">
     <thead>
         <tr>
             <th>№ з/п</th>
             <th>Заїзд</th>
             <th>Виїзд</th>
-
         </tr>
     </thead>
+    {% if parkings %}
     <tbody>
         {% for id, parking in parkings %}
         <tr>
-            <th>{{ id }}</th>
-            <th>{{ parking.start_time }}</th>
-            <th>{{ parking.end_time }}</th>
-
+            <td>{{ id }}</td>
+            <td>{{ parking.start_time }}</td>
+            <td>{{ parking.end_time }}</td>
         </tr>
         {% endfor %}
+        {% else %}
+        <tr>
+            <td colspan="3">There are no parkings yet</td>
+        </tr>
+{% endif %}
     </tbody>
 </table>
 <center><img class="htmx-indicator" width="60" src="{{ url_for ('static', path='img/bars.svg')}}"></center>
-{% else %}
-    <h1>There are no parkings yet</h1>
 {% endif %}
-{% endif %}
+</div>
 {% endblock %}

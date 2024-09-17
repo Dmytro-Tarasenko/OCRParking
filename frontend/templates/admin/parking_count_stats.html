@@ -1,3 +1,5 @@
+{% extends "admin/admin_base.html" %}
+{% block admin_content %}
 <h2 class="section-title">Кількість паркувань</h2>
 <form action="{{ url_for('get_parking_count_stats') }}" method="get" class="form-container">
     <div class="form-group">
@@ -16,3 +18,4 @@
 {% else %}
     <p class="no-data-text">Поки що немає даних для відображення.</p>
 {% endif %}
+{% endblock admin_content %}

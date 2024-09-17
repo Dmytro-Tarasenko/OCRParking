@@ -101,8 +101,12 @@ async def get_user_management(request: Request, db: AsyncSession = Depends(get_s
     if not current_user or not current_user.is_admin:
         return templates.TemplateResponse('auth/login_form.html',
                                           {'request': request, 'user': None, 'error': 'Admin access required'})
+    
+    user = User(username=current_user.username,
+                is_admin=current_user.is_admin)
 
-    return templates.TemplateResponse("admin/user_management.html", {"request": request})
+    return templates.TemplateResponse("admin/user_management.html", {"request": request,
+                                                                     "user": user})
 
 
 @router.get("/tariff_management", response_class=HTMLResponse, name="get_tariff_management")
@@ -138,8 +142,12 @@ async def get_tariff_management(request: Request, db: AsyncSession = Depends(get
     if not current_user or not current_user.is_admin:
         return templates.TemplateResponse('auth/login_form.html',
                                           {'request': request, 'user': None, 'error': 'Admin access required'})
+    
+    user = User(username=current_user.username,
+            is_admin=current_user.is_admin)
 
-    return templates.TemplateResponse("admin/tariff_management.html", {"request": request})
+    return templates.TemplateResponse("admin/tariff_management.html", {"request": request,
+                                                                       "user": user})
 
 
 @router.get("/blacklist_management", response_class=HTMLResponse, name="get_blacklist_management")
@@ -172,8 +180,11 @@ async def get_blacklist_management(request: Request, access_token: Annotated[str
     if not current_user or not current_user.is_admin:
         return templates.TemplateResponse('auth/login_form.html',
                                           {'request': request, 'user': None, 'error': 'Admin access required'})
+    
+    user = User(username=current_user.username,
+            is_admin=current_user.is_admin)
 
-    return templates.TemplateResponse("admin/blacklist_management.html", {"request": request, "user": current_user})
+    return templates.TemplateResponse("admin/blacklist_management.html", {"request": request, "user": user})
 
 
 @router.get("/stats_management", response_class=HTMLResponse, name="get_stats_management")
@@ -207,10 +218,14 @@ async def get_stats_management(request: Request, db: AsyncSession = Depends(get_
 
     cars = await db.execute(select(CarORM))
     cars_list = cars.scalars().all()
+    
+    user = User(username=current_user.username,
+            is_admin=current_user.is_admin)
 
     return templates.TemplateResponse("admin/stats_management.html", {
         "request": request,
-        "cars": cars_list
+        "cars": cars_list,
+        "user": user
     })
 
 
@@ -850,10 +865,14 @@ async def get_car_stats(request: Request, car_id: int, db: AsyncSession = Depend
     )
     history = parking_history.scalars().all()
 
+    user = User(username=current_user.username,
+                is_admin=current_user.is_admin)
+
     return templates.TemplateResponse("admin/car_stats.html", {
         "request": request,
         "car_plate": car.car_plate,
-        "parking_history": history
+        "parking_history": history,
+        "user": user
     })
 
 

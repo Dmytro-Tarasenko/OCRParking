@@ -1,5 +1,6 @@
-{% if messages %}
-<table hx-indicator=".htmx-indicator">
+<div class="car-statistics">
+    <h2 class="section-title">Мої повідомлення</h2>
+<table hx-indicator=".htmx-indicator" class="parking-history-table">
     <thead>
         <tr>
             <th>№ з/п</th>
@@ -9,28 +10,34 @@
         </tr>
     </thead>
     <tbody>
+        {% if messages %}
         {% for id, message in messages %}
         <tr {% if message.is_ban==True %}
-            bgcolor="tomato"
+            bgcolor="#BA0000"
             {% endif %}
         >
-            <th>{{ id }}</th>
-            <th>{{ message.message }}</th>
-            <th>
+            <td>{{ id }}</td>
+            <td>{{ message.message }}</td>
+            <td>
                 <a href="{{ url_for('get_paybill', bill_id=message.bill_id)}}">{{ message.bill_id }}</a>
-                </th>
-            <th>
+                </td>
+            <td>
                 {% if message.is_ban==True %}
                 Так
                 {% else %}
                 Ні
                 {% endif %}
-            </th>
+            </td>
         </tr>
         {% endfor %}
+        {% else %}
+        <tr>
+            <td colspan="4">
+                There are no messages yet
+            </td>
+        </tr>
+        {% endif %}
     </tbody>
 </table>
 <center><img class="htmx-indicator" width="60" src="{{ url_for ('static', path='img/bars.svg')}}"></center>
-{% else %}
-    <h1>There are no messages yet</h1>
-{% endif %}
+</div>

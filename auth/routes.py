@@ -6,6 +6,7 @@ from fastapi import (APIRouter,
                      status,
                      Request,
                      Form)
+from fastapi.responses import RedirectResponse
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -130,12 +131,18 @@ async def login(response: Response,
                                           context={'request': request,
                                                    'error': 'User not found or invalid credentials'})
     user = User(username=username)
-    ret = templates.TemplateResponse('user/user.html',
-                                     {'request': request,
-                                      'user': user})
-    ret.set_cookie(key='access_token', value=result['access_token'])
-    ret.set_cookie(key='refresh_token', value=result['refresh_token'])
-    return ret
+    # ret = templates.TemplateResponse('user/user.html',
+    #                                  {'request': request,
+    #                                   'user': user})
+    # ret.set_cookie(key='access_token', value=result['access_token'])
+    # ret.set_cookie(key='refresh_token', value=result['refresh_token'])
+
+    response = RedirectResponse('/user',
+                                status_code=status.HTTP_303_SEE_OTHER)
+    response.set_cookie(key='access_token', value=result['access_token'])
+    response.set_cookie(key='refresh_token', value=result['refresh_token'])
+
+    return response
 
 
 @router.post("/refresh")

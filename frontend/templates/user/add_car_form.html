@@ -1,11 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<div>
-    <form action="/user/add_car" method="post">
-    <h1>Please enter car license plate</h1>
+<div class="user-ban-management">
+  <h2 class="section-title">Додавання автомобіля</h2>
+    <form class="form-container" action="/user/add_car" method="post">
+    <h3 class="form-title">Уведіть реєстраційний номер</h3>
     <div>
-      <input type="text" id="floatingInput" name="car_plate" placeholder="Carplate" required>
-      <label for="floatingInput">Carplate</label>
+      <label class="form-label" for="floatingInput">Реєстраційний номер</label>
+      <input class="form-input" type="text" id="floatingInput" name="car_plate" placeholder="Carplate" required>
     </div>
     {% if error %}
         <div role="alert">
@@ -13,7 +14,7 @@
         </div>
     {% endif %}
     <div>
-    <button type="submit">Add car</button>
+    <button class="btn-primary" type="submit">Додати автомобіль</button>
     </div>
   </form>
 </div>

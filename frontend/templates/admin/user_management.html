@@ -1,43 +1,48 @@
-{% extends "base.html" %}
+{% extends "admin/admin_base.html" %}
 
-{% block content %}
-<h2>Управління користувачами</h2>
-<p>Тут можна додавати або видаляти користувачів.</p>
-
+{% block admin_content %}
+<div class="user-ban-management">
+<h2 class="section-title">Управління користувачами</h2>
+<p class="section-description">Тут можна додавати або видаляти користувачів.</p>
+</div>
 <!-- Форма для додавання користувача -->
-<form action="/admin/add_user" method="post">
+<h3 class="form-title">Додати корисувача</h3>
+<form action="/admin/add_user" method="post" class="form-container">
     <div>
-        <label for="username">Ім'я користувача:</label>
-        <input type="text" id="username" name="username" required>
+        <label for="username" class="form-label">Ім'я користувача:</label>
+        <input class="form-input" type="text" id="username" name="username" required>
     </div>
     <div>
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required>
+        <label class="form-label" for="email">Email:</label>
+        <input class="form-input" type="email" id="email" name="email" required>
     </div>
     <div>
-        <label for="password">Пароль:</label>
-        <input type="password" id="password" name="password" required>
+        <label class="form-label" for="password">Пароль:</label>
+        <input class="form-input" type="password" id="password" name="password" required>
     </div>
-    <button type="submit">Додати користувача</button>
+    <button class="btn-primary" type="submit">Додати користувача</button>
 </form>
 
 <!-- Список користувачів -->
-<h3>Список користувачів</h3>
+<div class="container">
+<h3 class="form-title">Список користувачів</h3>
 <div
+        class="banned-users-list"
         hx-get="{{ url_for('get_user_list') }}"
         hx-trigger="load"
         hx-swap="innerHTML">
 </div>
+</div>
 
 <!-- Форма для видалення користувача -->
-<h3>Видалити користувача</h3>
-<form action="/admin/delete_user" method="post">
-    <div>
-        <label for="delete_username">Ім'я користувача для видалення:</label>
-        <input type="text" id="delete_username" name="username" required>
+<h3 class="form-title">Видалити користувача</h3>
+<form action="/admin/delete_user" method="post" class="form-container">
+    <div class="form-group">
+        <label class="form-label" for="delete_username">Ім'я користувача для видалення:</label>
+        <input  class="form-input" type="text" id="delete_username" name="username" required>
     </div>
-    <button type="submit">Видалити користувача</button>
+    <button class="btn-danger" type="submit">Видалити користувача</button>
 </form>
 
 
-{% endblock %}
+{% endblock admin_content%}

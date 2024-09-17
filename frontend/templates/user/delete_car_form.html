@@ -8,11 +8,13 @@
     </h2>
 </div>
 {% else %}
+<div class="car-statistics">
+    <h2 class="section-title">Видалення автомобіля</h2>
 <div id="delete-info">
     <p>Автомобіль з номером <b>{{car}}</b> буде видалено з вашого акаунту!</p>
     <div>
     <a 
-        class="button"
+        class="btn-danger"
         href="#"
         hx-delete="{{ url_for('delete_car', car_plate=car)}}"
         hx-trigger="click"
@@ -20,6 +22,7 @@
         hx-swap="innerHTML">Видалити</a>
     <a class="button" href="{{ url_for('get_user_page')}}">Повернутись</a>
     </div>
+</div>
 </div>
 {% endif %}
 {% endblock %}

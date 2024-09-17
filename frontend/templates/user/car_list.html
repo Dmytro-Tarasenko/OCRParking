@@ -1,5 +1,6 @@
-{% if cars %}
-<table hx-indicator=".htmx-indicator">
+<div class="car-statistics">
+    <h2 class="section-title">Перелік автомобілів</h2>
+<table hx-indicator=".htmx-indicator" class="parking-history-table">
     <thead>
         <tr>
             <th>№ з/п</th>
@@ -9,28 +10,34 @@
         </tr>
     </thead>
     <tbody>
+        {% if cars %}
         {% for id, car in cars %}
         <tr>
-            <th>{{ id }}</th>
-            <th>{{car.car_plate}}</th>
-            <th>{{car.status}}</th>
-            <th><ul>
-                    <li>
-                        <a href="{{ url_for('get_car_parkings', car_plate=car.car_plate) }}" class="button">Історія паркувань</a>
+            <td>{{ id }}</td>
+            <td>{{car.car_plate}}</td>
+            <td>{{car.status}}</td>
+            <td><ul>
+                    <li style="display: inline">
+                        <a href="{{ url_for('get_car_parkings', car_plate=car.car_plate) }}" >Історія паркувань</a>
                     </li>
-                    <li>
-                        <a href="{{ url_for('get_car_bills', car_plate=car.car_plate) }}" class="button">Рахунки</a>
+                    <li style="display: inline">
+                        <a href="{{ url_for('get_car_bills', car_plate=car.car_plate) }}">Рахунки</a>
                     </li>
-                    <li>
-                        <a href="{{ url_for('get_car_delete_form', car_plate=car.car_plate)}}" class="button">Видалити</a>
+                    <li style="display: inline">
+                        <a href="{{ url_for('get_car_delete_form', car_plate=car.car_plate)}}">Видалити</a>
                     </li>
                 </ul>
-            </th>
+            </td>
         </tr>
         {% endfor %}
+        {% else %}
+        <tr>
+            <td colspan="4">Немає записів.</td>
+         </tr>
+         {% endif %}
     </tbody>
 </table>
-<center><img class="htmx-indicator" width="60" src="{{ url_for ('static', path='img/bars.svg')}}"></center>
-{% else %}
-    <h1>Cars not registered</h1>
-{% endif %}
+<a href="{{ url_for('get_add_car_form')}}" class="button">Додати автомобіль</a>
+</dv>
+
+    

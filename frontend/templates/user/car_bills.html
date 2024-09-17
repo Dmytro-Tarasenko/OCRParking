@@ -5,8 +5,11 @@
     {{ error }}
 </h2>
 {% else %}
-{% if bills %}
-<table hx-indicator=".htmx-indicator">
+<div class="car-statistics">
+    <h2 class="section-title">Рахунки автомобіля</h2>
+    <p class="car-plate">Номерний знак: <strong>{{ car }}</strong></p>
+
+<table hx-indicator=".htmx-indicator" class="parking-history-table">
     <thead>
         <tr>
             <th>№ з/п</th>
@@ -17,26 +20,30 @@
         </tr>
     </thead>
     <tbody>
+        {% if bills %}
         {% for id, bill in bills %}
         <tr>
-            <th>{{ id }}</th>
-            <th>{{ bill.history.start_time }}</th>
-            <th>{{ bill.history.end_time }}</th>
-            <th>{{ bill.cost }}</th>
-            <th>
+            <td>{{ id }}</td>
+            <td>{{ bill.history.start_time }}</td>
+            <td>{{ bill.history.end_time }}</td>
+            <td>{{ bill.cost }}</td>
+            <td>
                 {% if bill.status=='paid' %}
                 Оплачений
                 {% else %}
                 <a class=button href="{{ url_for('post_paybill', bill_id=bill.id)}}">Оплатити разунок</a>
                 {% endif %}
-            </th>
+            </td>
         </tr>
         {% endfor %}
+        {% else %}
+        <tr>
+            <td>There are no bills yet</td>
+        </tr>
+        {% endif %}
     </tbody>
 </table>
 <center><img class="htmx-indicator" width="60" src="{{ url_for ('static', path='img/bars.svg')}}"></center>
-{% else %}
-    <h1>There are no bills yet</h1>
-{% endif %}
+</div>
 {% endif %}
 {% endblock %}

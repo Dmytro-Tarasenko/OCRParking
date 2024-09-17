@@ -1,4 +1,4 @@
-{% extends "base.html" %} {% block content %}
+{% extends "admin/admin_base.html" %} {% block admin_content %}
 <div class="car-statistics">
   <h2 class="section-title">Статистика автомобіля</h2>
   <p class="car-plate">Номерний знак: <strong>{{ car_plate }}</strong></p>
@@ -27,4 +27,4 @@
     </tbody>
   </table>
 </div>
-{% endblock %}
+{% endblock admin_content %}
