@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="header">
+    <h1>Панель адміністратора</h1>
+    <nav class="admin-nav">
+        <ul class="menu">
+            <li><a href="{{ url_for('get_user_management') }}" class="button">Користувачі</a>
+            </li>
+            <li><a href="{{ url_for('get_tariff_management') }}" class="button">Тарифи</a>
+            </li>
+            <li><a href="{{ url_for('get_blacklist_management') }}" class="button">Чорний список</a></li>
+            <li><a href="{{ url_for('get_stats_management') }}" class="button">Статистика</a></li>
+            <li><a href="{{ url_for('logout') }}" class="button">Вийти</a></li>
+        </ul>
+    </nav>
+</div>
+
+<main class="main">
+    <section id="admin-content">
+        {% block admin_content %}{% endblock admin_content %}
+    </section>
+</main>
+{% endblock %}

@@ -1,6 +1,6 @@
 from typing import List, Optional
 
-from sqlalchemy import String, Boolean, ForeignKey, Float, DateTime, Date
+from sqlalchemy import String, Boolean, ForeignKey, Float, DateTime, Date, select, func
 from sqlalchemy.orm import relationship, Mapped, mapped_column
 from db_models.db import BaseORM
 from datetime import datetime
@@ -224,3 +224,13 @@ class CreditLimitsORM(BaseORM):
     limit: Mapped[float] = mapped_column(Float)
     set_date: Mapped[Date] = mapped_column(Date,
                                            default=datetime.today().date())
+
+
+class ParkingLotORM(BaseORM):
+    __tablename__ = 'parking_lots'
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    car_id: Mapped[int] = mapped_column(ForeignKey('cars.id'), nullable=True)
+
+    #relations
+    car: Mapped[CarORM] = relationship(CarORM)
