@@ -1,16 +1,18 @@
-<h2>Кількість паркувань</h2>
-<form action="{{ url_for('get_parking_count_stats') }}" method="get">
-    <label for="period">Виберіть період:</label>
-    <select id="period" name="period">
-        <option value="day" {% if period == 'day' %}selected{% endif %}>День</option>
-        <option value="week" {% if period == 'week' %}selected{% endif %}>Тиждень</option>
-        <option value="month" {% if period == 'month' %}selected{% endif %}>Місяць</option>
-    </select>
-    <button type="submit">Показати статистику</button>
+<h2 class="section-title">Кількість паркувань</h2>
+<form action="{{ url_for('get_parking_count_stats') }}" method="get" class="form-container">
+    <div class="form-group">
+        <label for="period" class="form-label">Виберіть період:</label>
+        <select id="period" name="period" class="form-select">
+            <option value="day" {% if period == 'day' %}selected{% endif %}>День</option>
+            <option value="week" {% if period == 'week' %}selected{% endif %}>Тиждень</option>
+            <option value="month" {% if period == 'month' %}selected{% endif %}>Місяць</option>
+        </select>
+    </div>
+    <button type="submit" class="btn-primary">Показати статистику</button>
 </form>
 
 {% if parking_count is not none %}
-    <h3>Кількість паркувань за {{ period }}: {{ parking_count }}</h3>
+    <h3 class="parking-stats-title">Кількість паркувань за {{ period }}: <strong>{{ parking_count }}</strong></h3>
 {% else %}
-    <p>Поки що немає даних для відображення.</p>
+    <p class="no-data-text">Поки що немає даних для відображення.</p>
 {% endif %}

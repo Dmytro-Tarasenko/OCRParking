@@ -1,4 +1,9 @@
 {% block content %}
-    <h2>Середня тривалість паркування</h2>
-    <p>Середня тривалість паркування: {{ average_parking_duration_hours | round(2) }} годин</p>
+<div class="parking-duration-section">
+  <h2 class="section-title">Середня тривалість паркування</h2>
+  <p class="average-duration">
+    Середня тривалість паркування:
+    <strong>{{ average_parking_duration_hours | round(2) }}</strong> годин
+  </p>
+</div>
 {% endblock %}
