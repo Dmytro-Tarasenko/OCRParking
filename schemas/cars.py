@@ -42,3 +42,12 @@ class MessageInfo(pydantic.BaseModel):
     message: str
     is_active: bool
     is_ban: Optional[bool] = False
+
+
+class ParkingLot(pydantic.BaseModel):
+    model_config = {
+        'from_attributes': True
+    }
+
+    id: int
+    car_id: Optional[int] = None

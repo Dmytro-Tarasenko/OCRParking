@@ -4,11 +4,15 @@ from typing import Any, Annotated
 from fastapi.routing import APIRouter
 from fastapi import Request, Cookie, Depends
 from fastapi.templating import Jinja2Templates
+
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from db_models.db import get_session
+from db_models.orms import ParkingLotORM
 from auth.auth import Authentication
 from schemas.auth import User
+from schemas.cars import ParkingLot
 
 auth = Authentication()
 
@@ -75,3 +79,35 @@ async def about(
         user = User(username=username)
     return templates.TemplateResponse('about.html', {'request': request,
                                                      'user': user})
+
+
+@router.get('/parking_lots')
+async def get_parking_lots(
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_session)]
+) -> Any:
+    stmnt = select(ParkingLotORM).order_by(ParkingLotORM.id)
+    res = await db.execute(stmnt)
+    lots_db = res.scalars().all()
+
+    lots_info = []
+    for lot in lots_db:
+        entry = ParkingLot.model_validate(lot)
+        lots_info.append(entry)
+    
+    stmnt = select(ParkingLotORM).where(ParkingLotORM.car_id.is_not(None))
+    res = await db.execute(stmnt)
+    occupied = len(res.scalars().all())
+    free = 30 - occupied
+    total = 30
+
+    return templates.TemplateResponse(
+        'lots.html',
+        {
+            'request': request,
+            'lots': lots_info,
+            'occupied': occupied,
+            'free': free,
+            'total': total
+        }
+    )

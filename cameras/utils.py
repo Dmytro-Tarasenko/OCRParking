@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 
+import numpy as np
+
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -11,7 +13,8 @@ from db_models.orms import (
     ParkingHistoryORM,
     TariffORM,
     CreditLimitsORM,
-    ServiceMessageORM
+    ServiceMessageORM,
+    ParkingLotORM
     )
 
 
@@ -221,3 +224,39 @@ async def send_message(user_id: int,
 
     return message.id
 
+
+async def occupy_lot(
+        car_id: int,
+        db: AsyncSession
+) -> None:
+    stmnt = select(ParkingLotORM).where(ParkingLotORM.car_id.is_(None))
+    res = await db.execute(stmnt)
+    free_lots = res.scalars().all()
+
+    ids = tuple(lot.id for lot in free_lots)
+    occupied = np.random.choice(ids)
+
+    stmnt = select(ParkingLotORM).where(ParkingLotORM.id == occupied)
+    res = await db.execute(stmnt)
+    lot = res.scalar_one_or_none()
+    lot.car_id = car_id
+
+    await db.commit()
+    return
+
+
+async def free_lot(
+        car_id: int,
+        db: AsyncSession
+) -> None:
+    stmnt = select(ParkingLotORM).where(ParkingLotORM.car_id == car_id)
+    res = await db.execute(stmnt)
+    lot = res.scalar()
+
+    if lot is None:
+        return
+    
+    lot.car_id = None
+    
+    await db.commit()
+    return

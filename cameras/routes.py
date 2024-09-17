@@ -123,6 +123,8 @@ async def post_enter_camera(
     db.refresh(parking)
     await db.commit()
 
+    await utils.occupy_lot(car_db.id, db)
+
     return templates.TemplateResponse(
         'cameras/turnpike_up.html',
         {
@@ -234,9 +236,11 @@ async def post_leave_camera(
     await utils.send_message(car_db.owner.id,
                              parking_db.bill.id,
                              db)
+    
+    await utils.free_lot(car_db.id, db)
+    
     await db.commit()
 
-    # TODO: Turnpike action
     return templates.TemplateResponse(
         'cameras/turnpike_up.html',
         {

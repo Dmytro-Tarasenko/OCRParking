@@ -1,0 +1,11 @@
+<h3 class="section-title">Паркомісця</h3>
+<p class="section-description">
+    вільно {{ free }} з {{ total }}
+</p>
+<div class="parking-lot-container">
+    {% for lot in lots %}
+    <div class="parking-lot" {% if lot.car_id %} style="background-color: #FF6B0A;" 
+                             {% else %} style="background-color: #76CA66;" {% endif %}
+    >{{ lot.id }}</div>
+    {% endfor %}
+</div>

@@ -36,6 +36,13 @@
         </header>
         <div class="content">
             <main>
+                <div class="parking-lots"
+                    hx-get="{{ url_for('get_parking_lots')}}"
+                    hx-swap="innerHTML"
+                    hx-trigger="load, every 2s"
+                >
+                <!-- Parking lots go here -->
+                </div>
                 {% block content %}{% endblock %}
             </main>
         </div>

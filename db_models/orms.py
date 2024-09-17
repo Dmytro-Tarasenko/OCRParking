@@ -232,5 +232,5 @@ class ParkingLotORM(BaseORM):
     id: Mapped[int] = mapped_column(primary_key=True)
     car_id: Mapped[int] = mapped_column(ForeignKey('cars.id'), nullable=True)
 
-    #relations
-    car: Mapped[CarORM] = relationship(CarORM)
+    # #relations
+    # car: Mapped[CarORM] = relationship(CarORM)

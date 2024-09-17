@@ -700,3 +700,18 @@ footer {
 .table td {
     text-align: center;
   }
+
+.parking-lots {
+  max-width: 680px;
+  margin: 20px auto;
+  
+}
+
+.parking-lot {
+  display: inline-block;
+  width: 32px;
+  padding: 10px;
+  margin: 5px;
+  font-size: medium;
+  background-color: #76CA66;
+}
