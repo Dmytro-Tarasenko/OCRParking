@@ -1,0 +1,361 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>auth.auth &#8212; OCRParking 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nature.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">auth.auth</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for auth.auth</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+<span class="kn">from</span> <span class="nn">jose</span> <span class="kn">import</span> <span class="n">jwt</span><span class="p">,</span> <span class="n">JWTError</span>
+<span class="kn">import</span> <span class="nn">bcrypt</span>
+<span class="kn">from</span> <span class="nn">fastapi</span> <span class="kn">import</span> <span class="n">HTTPException</span><span class="p">,</span> <span class="n">Response</span><span class="p">,</span> <span class="n">Request</span><span class="p">,</span> <span class="n">security</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.ext.asyncio</span> <span class="kn">import</span> <span class="n">AsyncSession</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.future</span> <span class="kn">import</span> <span class="n">select</span>
+
+<span class="kn">from</span> <span class="nn">schemas.auth</span> <span class="kn">import</span> <span class="n">UserLogin</span>
+<span class="kn">from</span> <span class="nn">db_models.models</span> <span class="kn">import</span> <span class="n">User</span> <span class="k">as</span> <span class="n">UserModel</span>
+<span class="kn">from</span> <span class="nn">settings</span> <span class="kn">import</span> <span class="n">settings</span>
+
+
+<div class="viewcode-block" id="Authentication"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication">[docs]</a><span class="k">class</span> <span class="nc">Authentication</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Authentication class responsible for user authentication, token generation,</span>
+<span class="sd">        and authorization for the OCRParking system.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            hash_service (bcrypt): Service for password hashing and verification.</span>
+<span class="sd">            oauth2_schema (OAuth2PasswordBearer): Security schema for handling OAuth2 password tokens.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="c1"># pwd_context = CryptContext(schemes=[&quot;bcrypt&quot;], deprecated=&quot;auto&quot;)</span>
+    <span class="n">hash_service</span> <span class="o">=</span> <span class="n">bcrypt</span>
+    <span class="n">oauth2_schema</span> <span class="o">=</span> <span class="n">security</span><span class="o">.</span><span class="n">OAuth2PasswordBearer</span><span class="p">(</span><span class="n">tokenUrl</span><span class="o">=</span><span class="s2">&quot;token&quot;</span><span class="p">)</span>
+
+    <span class="c1"># oauth2_schema = security.OAuth2PasswordBearer(tokenUrl=&quot;/auth/login&quot;)</span>
+
+<div class="viewcode-block" id="Authentication.get_password_hash"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication.get_password_hash">[docs]</a>    <span class="k">def</span> <span class="nf">get_password_hash</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Hashes the given password using bcrypt.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    password (str): The plaintext password to be hashed.</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    str: The hashed password.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">hash_service</span><span class="o">.</span><span class="n">hashpw</span><span class="p">(</span>
+            <span class="n">password</span><span class="o">=</span><span class="n">password</span><span class="o">.</span><span class="n">encode</span><span class="p">(),</span>
+            <span class="n">salt</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">hash_service</span><span class="o">.</span><span class="n">gensalt</span><span class="p">()</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="Authentication.verify_password"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication.verify_password">[docs]</a>    <span class="k">def</span> <span class="nf">verify_password</span><span class="p">(</span>
+            <span class="bp">self</span><span class="p">,</span>
+            <span class="n">plain_password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">hashed_password</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Verifies a password against its hashed version.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    plain_password (str): The plaintext password.</span>
+<span class="sd">                    hashed_password (str): The hashed password for comparison.</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    bool: True if the password matches, False otherwise.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">hash_service</span><span class="o">.</span><span class="n">checkpw</span><span class="p">(</span>
+            <span class="n">password</span><span class="o">=</span><span class="n">plain_password</span><span class="o">.</span><span class="n">encode</span><span class="p">(),</span>
+            <span class="n">hashed_password</span><span class="o">=</span><span class="n">hashed_password</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+        <span class="p">)</span></div>
+
+<div class="viewcode-block" id="Authentication.create_access_token"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication.create_access_token">[docs]</a>    <span class="k">def</span> <span class="nf">create_access_token</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                            <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+                            <span class="n">expires_delta</span><span class="p">:</span> <span class="n">timedelta</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+                            <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Creates a JWT access token.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    data (dict): The data to encode in the token, typically user identification.</span>
+<span class="sd">                    expires_delta (timedelta, optional): The token expiration time. Defaults to settings.</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    str: The encoded JWT token.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+        <span class="n">to_encode</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">expire</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="o">+</span> <span class="p">(</span><span class="n">expires_delta</span>
+                   <span class="ow">or</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">access_token_expire_minutes</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="n">to_encode</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;exp&quot;</span><span class="p">:</span> <span class="n">expire</span><span class="p">})</span>
+        <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">to_encode</span><span class="p">,</span>
+                          <span class="n">settings</span><span class="o">.</span><span class="n">secret</span><span class="p">,</span>
+                          <span class="n">algorithm</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">algorithm</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Authentication.create_refresh_token"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication.create_refresh_token">[docs]</a>    <span class="k">def</span> <span class="nf">create_refresh_token</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                             <span class="n">data</span><span class="p">:</span> <span class="nb">dict</span><span class="p">,</span>
+                             <span class="n">expires_delta</span><span class="p">:</span> <span class="n">timedelta</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span>
+                             <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Creates a JWT refresh token.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    data (dict): The data to encode in the token, typically user identification.</span>
+<span class="sd">                    expires_delta (timedelta, optional): The token expiration time. Defaults to settings.</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    str: The encoded JWT refresh token.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+        <span class="n">to_encode</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">expire</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+                <span class="o">+</span> <span class="p">(</span><span class="n">expires_delta</span>
+                   <span class="ow">or</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">refresh_token_expire_days</span><span class="p">))</span>
+        <span class="p">)</span>
+        <span class="n">to_encode</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;exp&quot;</span><span class="p">:</span> <span class="n">expire</span><span class="p">})</span>
+        <span class="k">return</span> <span class="n">jwt</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="n">to_encode</span><span class="p">,</span>
+                          <span class="n">settings</span><span class="o">.</span><span class="n">refresh_secret</span><span class="p">,</span>
+                          <span class="n">algorithm</span><span class="o">=</span><span class="n">settings</span><span class="o">.</span><span class="n">algorithm</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Authentication.decode_token"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication.decode_token">[docs]</a>    <span class="k">def</span> <span class="nf">decode_token</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">token</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">secret_key</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Decodes a JWT token and retrieves the username from the payload.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    token (str): The JWT token to decode.</span>
+<span class="sd">                    secret_key (str): The key used to decode the token.</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    str: The username (subject) encoded in the token.</span>
+
+<span class="sd">                Raises:</span>
+<span class="sd">                    HTTPException: If the token is invalid or missing the &#39;sub&#39; field.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">payload</span> <span class="o">=</span> <span class="n">jwt</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="n">token</span><span class="p">,</span>
+                                 <span class="n">secret_key</span><span class="p">,</span>
+                                 <span class="n">algorithms</span><span class="o">=</span><span class="p">[</span><span class="n">settings</span><span class="o">.</span><span class="n">algorithm</span><span class="p">])</span>
+            <span class="n">username</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">payload</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;sub&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">username</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">,</span>
+                                    <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Could not validate credentials&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">username</span>
+        <span class="k">except</span> <span class="n">JWTError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Invalid token&quot;</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Authentication.authenticate_user"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication.authenticate_user">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">authenticate_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                                <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                                <span class="n">password</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                                <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span>
+                                <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserModel</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Authenticates a user by verifying the username and password.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    username (str): The username of the user.</span>
+<span class="sd">                    password (str): The plaintext password of the user.</span>
+<span class="sd">                    db (AsyncSession): The database session.</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    UserModel | None: The authenticated user or None if authentication fails.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserModel</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserModel</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">))</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">user</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">verify_password</span><span class="p">(</span><span class="n">password</span><span class="p">,</span> <span class="n">user</span><span class="o">.</span><span class="n">password</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">user</span>
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+<div class="viewcode-block" id="Authentication.login"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication.login">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">login</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                    <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span>
+                    <span class="n">user_login</span><span class="p">:</span> <span class="n">UserLogin</span><span class="p">,</span>
+                    <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Handles user login by generating access and refresh tokens and setting cookies.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    response (Response): The response object to set cookies.</span>
+<span class="sd">                    user_login (UserLogin): The login data (username and password).</span>
+<span class="sd">                    db (AsyncSession): The database session.</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    dict: A dictionary containing the access and refresh tokens.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="bp">self</span><span class="o">.</span><span class="n">authenticate_user</span><span class="p">(</span><span class="n">user_login</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+                                            <span class="n">user_login</span><span class="o">.</span><span class="n">password</span><span class="p">,</span>
+                                            <span class="n">db</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="s2">&quot;Incorrect username or password&quot;</span><span class="p">}</span>
+
+        <span class="n">access_token</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_access_token</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">username</span><span class="p">})</span>
+        <span class="n">refresh_token</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_refresh_token</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">user</span><span class="o">.</span><span class="n">username</span><span class="p">})</span>
+
+        <span class="n">response</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;access_token&quot;</span><span class="p">,</span>
+                            <span class="n">value</span><span class="o">=</span><span class="n">access_token</span><span class="p">,</span>
+                            <span class="n">httponly</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;refresh_token&quot;</span><span class="p">,</span>
+                            <span class="n">value</span><span class="o">=</span><span class="n">refresh_token</span><span class="p">,</span>
+                            <span class="n">httponly</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">access_token</span><span class="p">,</span>
+                <span class="s2">&quot;refresh_token&quot;</span><span class="p">:</span> <span class="n">refresh_token</span><span class="p">}</span></div>
+
+<div class="viewcode-block" id="Authentication.refresh_token"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication.refresh_token">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">refresh_token</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                            <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span>
+                            <span class="n">refresh_token</span><span class="p">:</span> <span class="nb">str</span>
+                            <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Refreshes tokens by generating new access and refresh tokens and setting cookies.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    response (Response): The response object to set cookies.</span>
+<span class="sd">                    refresh_token (str): The current refresh token.</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    dict: A dictionary containing the new access and refresh tokens.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+
+        <span class="n">username</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_token</span><span class="p">(</span><span class="n">refresh_token</span><span class="p">,</span> <span class="n">settings</span><span class="o">.</span><span class="n">refresh_secret</span><span class="p">)</span>
+        <span class="n">new_access_token</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_access_token</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">})</span>
+        <span class="n">new_refresh_token</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">create_refresh_token</span><span class="p">(</span><span class="n">data</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;sub&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">})</span>
+
+        <span class="n">response</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;access_token&quot;</span><span class="p">,</span>
+                            <span class="n">value</span><span class="o">=</span><span class="n">new_access_token</span><span class="p">,</span>
+                            <span class="n">httponly</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;refresh_token&quot;</span><span class="p">,</span>
+                            <span class="n">value</span><span class="o">=</span><span class="n">new_refresh_token</span><span class="p">,</span>
+                            <span class="n">httponly</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;access_token&quot;</span><span class="p">:</span> <span class="n">new_access_token</span><span class="p">,</span>
+                <span class="s2">&quot;refresh_token&quot;</span><span class="p">:</span> <span class="n">new_refresh_token</span><span class="p">}</span></div>
+
+<div class="viewcode-block" id="Authentication.get_current_user"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication.get_current_user">[docs]</a>    <span class="k">def</span> <span class="nf">get_current_user</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Retrieves the current user from the access token in cookies.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    request (Request): The request object containing cookies.</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    str: The username of the current user.</span>
+
+<span class="sd">                Raises:</span>
+<span class="sd">                    HTTPException: If the user is not authenticated.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">cookies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;access_token&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">token</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">,</span>
+                                <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authenticated&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_token</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">settings</span><span class="o">.</span><span class="n">secret</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Authentication.is_admin"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication.is_admin">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">is_admin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+                       <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span>
+                       <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">UserModel</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Verifies if the current user is an admin.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    request (Request): The request object containing cookies.</span>
+<span class="sd">                    db (AsyncSession): The database session.</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    UserModel: The user model if the user is an admin.</span>
+
+<span class="sd">                Raises:</span>
+<span class="sd">                    HTTPException: If the user is not authenticated or lacks admin privileges.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+        <span class="n">token</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">cookies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;access_token&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">token</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">,</span>
+                                <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authenticated&quot;</span><span class="p">)</span>
+
+        <span class="n">username</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">decode_token</span><span class="p">(</span><span class="n">token</span><span class="p">,</span> <span class="n">settings</span><span class="o">.</span><span class="n">secret</span><span class="p">)</span>
+        <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserModel</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserModel</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">))</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not enough privileges&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">user</span></div>
+
+<div class="viewcode-block" id="Authentication.logout"><a class="viewcode-back" href="../../modules.html#auth.auth.Authentication.logout">[docs]</a>    <span class="k">async</span> <span class="k">def</span> <span class="nf">logout</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                Logs out the user by deleting the authentication cookies.</span>
+
+<span class="sd">                Args:</span>
+<span class="sd">                    response (Response): The response object to delete cookies.</span>
+
+<span class="sd">                Returns:</span>
+<span class="sd">                    dict: A message confirming successful logout.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+
+        <span class="n">response</span><span class="o">.</span><span class="n">delete_cookie</span><span class="p">(</span><span class="s2">&quot;access_token&quot;</span><span class="p">)</span>
+        <span class="n">response</span><span class="o">.</span><span class="n">delete_cookie</span><span class="p">(</span><span class="s2">&quot;refresh_token&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Logged out successfully&quot;</span><span class="p">}</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">auth.auth</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2024, Project Team №4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>

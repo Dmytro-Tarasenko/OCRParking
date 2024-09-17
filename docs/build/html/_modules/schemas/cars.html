@@ -1,0 +1,173 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>schemas.cars &#8212; OCRParking 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nature.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">schemas.cars</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for schemas.cars</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">TypeAlias</span><span class="p">,</span> <span class="n">Literal</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">import</span> <span class="nn">pydantic</span>
+
+
+<span class="n">CarStatus</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;out&#39;</span><span class="p">,</span> <span class="s1">&#39;parked&#39;</span><span class="p">]</span>
+<span class="n">BillStatus</span><span class="p">:</span> <span class="n">TypeAlias</span> <span class="o">=</span> <span class="n">Literal</span><span class="p">[</span><span class="s1">&#39;sent&#39;</span><span class="p">,</span> <span class="s1">&#39;paid&#39;</span><span class="p">,</span> <span class="s1">&#39;not issued&#39;</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="CarInfo"><a class="viewcode-back" href="../../modules.html#schemas.cars.CarInfo">[docs]</a><span class="k">class</span> <span class="nc">CarInfo</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents the information of a car.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            car_plate (str): The license plate of the car.</span>
+<span class="sd">            status (CarStatus): The current status of the car (&#39;out&#39; by default).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">car_plate</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">status</span><span class="p">:</span> <span class="n">CarStatus</span> <span class="o">=</span> <span class="s1">&#39;out&#39;</span></div>
+
+
+<div class="viewcode-block" id="ParkingInfo"><a class="viewcode-back" href="../../modules.html#schemas.cars.ParkingInfo">[docs]</a><span class="k">class</span> <span class="nc">ParkingInfo</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents parking information.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            car (str): The license plate of the car.</span>
+<span class="sd">            start_time (datetime): The start time of the parking session.</span>
+<span class="sd">            end_time (Optional[datetime]): The end time of the parking session (optional).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">car</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">start_time</span><span class="p">:</span> <span class="n">datetime</span>
+    <span class="n">end_time</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">datetime</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="ParkingInfoExt"><a class="viewcode-back" href="../../modules.html#schemas.cars.ParkingInfoExt">[docs]</a><span class="k">class</span> <span class="nc">ParkingInfoExt</span><span class="p">(</span><span class="n">ParkingInfo</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Extends ParkingInfo with additional billing information.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            cost (Optional[float]): The cost of the parking session (optional).</span>
+<span class="sd">            bill_id (Optional[int]): The identifier for the associated bill (optional).</span>
+<span class="sd">            bill_status (BillStatus): The status of the bill (&#39;not issued&#39; by default).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">cost</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">bill_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">bill_status</span><span class="p">:</span> <span class="n">BillStatus</span> <span class="o">=</span> <span class="s1">&#39;not issued&#39;</span></div>
+
+
+<div class="viewcode-block" id="BillingInfo"><a class="viewcode-back" href="../../modules.html#schemas.cars.BillingInfo">[docs]</a><span class="k">class</span> <span class="nc">BillingInfo</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents billing information for a user.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            id (int): The unique identifier of the bill.</span>
+<span class="sd">            username (str): The username of the user associated with the bill.</span>
+<span class="sd">            cost (float): The total cost to be paid.</span>
+<span class="sd">            history (ParkingInfo): The parking information associated with this bill.</span>
+<span class="sd">            status (BillStatus): The status of the bill (&#39;not issued&#39; by default).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">cost</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="n">history</span><span class="p">:</span> <span class="n">ParkingInfo</span>
+    <span class="n">status</span><span class="p">:</span> <span class="n">BillStatus</span> <span class="o">=</span> <span class="s1">&#39;not issued&#39;</span></div>
+
+
+<div class="viewcode-block" id="MessageInfo"><a class="viewcode-back" href="../../modules.html#schemas.cars.MessageInfo">[docs]</a><span class="k">class</span> <span class="nc">MessageInfo</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a message related to billing or user status.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            id (int): The unique identifier of the message.</span>
+<span class="sd">            user_id (int): The unique identifier of the user related to the message.</span>
+<span class="sd">            bill_id (int): The identifier of the bill related to the message.</span>
+<span class="sd">            message (str): The message content.</span>
+<span class="sd">            is_active (bool): Whether the message is active.</span>
+<span class="sd">            is_ban (Optional[bool]): Whether the message indicates a ban (False by default).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;from_attributes&#39;</span><span class="p">:</span> <span class="kc">True</span> 
+    <span class="p">}</span>
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">bill_id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">message</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">is_active</span><span class="p">:</span> <span class="nb">bool</span>
+    <span class="n">is_ban</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="ParkingLot"><a class="viewcode-back" href="../../modules.html#schemas.cars.ParkingLot">[docs]</a><span class="k">class</span> <span class="nc">ParkingLot</span><span class="p">(</span><span class="n">pydantic</span><span class="o">.</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Represents a parking lot.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            id (int): The unique identifier of the parking lot.</span>
+<span class="sd">            car_id (Optional[int]): The identifier of the car parked in the lot (optional).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s1">&#39;from_attributes&#39;</span><span class="p">:</span> <span class="kc">True</span>
+    <span class="p">}</span>
+
+    <span class="nb">id</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="n">car_id</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">schemas.cars</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2024, Project Team №4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>

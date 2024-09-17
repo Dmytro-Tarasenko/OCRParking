@@ -21,6 +21,16 @@ model = torch.load(model_path, weights_only=False)
 
 
 def detect_license_plates(image):
+    """
+        Detects the license plate in an image using an object detection model.
+
+        Args:
+            image (numpy.ndarray): The input image in which to detect the license plate.
+
+        Returns:
+            tuple: Coordinates (x1, y1, x2, y2) of the detected license plate's bounding box with the highest confidence.
+                   If no box is found, returns None.
+        """
     results = model(image)
 
     boxes = results.xyxy[0].cpu().numpy()
@@ -39,6 +49,17 @@ def detect_license_plates(image):
 
 
 def extract_license_plate(image, best_box):
+    """
+        Extracts the detected license plate from the image based on the bounding box.
+
+        Args:
+            image (numpy.ndarray): The input image containing the license plate.
+            best_box (tuple): A tuple containing the coordinates (x1, y1, x2, y2) of the license plate bounding box.
+
+        Returns:
+            numpy.ndarray: The cropped image of the license plate.
+                          If no box is found, returns None.
+        """
     if best_box is not None:
         x1, y1, x2, y2 = best_box
         best_license_plate = image[y1:y2, x1:x2]
@@ -54,12 +75,30 @@ def extract_license_plate(image, best_box):
 
 
 def recognize_text_easy(image):
+    """
+        Recognizes text from the extracted license plate image using EasyOCR.
+
+        Args:
+            image (numpy.ndarray): The image of the license plate to recognize text from.
+
+        Returns:
+            list: A list of recognized text data, where each element is a tuple containing the bounding box and recognized text.
+        """
     reader = easyocr.Reader(['en'])
     num = reader.readtext(image, paragraph=False)
     return num
 
 
 def get_plate_number(image) -> List[Recognition]:
+    """
+        Processes the input image to detect, extract, and recognize the license plate number.
+
+        Args:
+            image (bytes): The input image in byte format, representing the vehicle's image.
+
+        Returns:
+            List[Recognition]: A list of recognized license plate text and bounding boxes.
+        """
     nparr = np.fromstring(image, np.uint8)  
     image = cv2.imdecode(nparr, cv2.IMREAD_ANYCOLOR)
     box = detect_license_plates(image)

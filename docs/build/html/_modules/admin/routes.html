@@ -1,0 +1,1326 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>admin.routes &#8212; OCRParking 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nature.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">admin.routes</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for admin.routes</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">timedelta</span><span class="p">,</span> <span class="n">datetime</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span> <span class="nn">fastapi</span> <span class="kn">import</span> <span class="n">APIRouter</span><span class="p">,</span> <span class="n">Depends</span><span class="p">,</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">,</span> <span class="n">Form</span><span class="p">,</span> <span class="n">Response</span>
+<span class="kn">from</span> <span class="nn">fastapi</span> <span class="kn">import</span> <span class="n">HTTPException</span>
+<span class="kn">from</span> <span class="nn">fastapi.responses</span> <span class="kn">import</span> <span class="n">HTMLResponse</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">func</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.ext.asyncio</span> <span class="kn">import</span> <span class="n">AsyncSession</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.future</span> <span class="kn">import</span> <span class="n">select</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm</span> <span class="kn">import</span> <span class="n">joinedload</span><span class="p">,</span> <span class="n">selectinload</span>
+
+<span class="kn">from</span> <span class="nn">settings</span> <span class="kn">import</span> <span class="n">EnvSettings</span>
+<span class="kn">from</span> <span class="nn">auth.auth</span> <span class="kn">import</span> <span class="n">Authentication</span>
+<span class="kn">from</span> <span class="nn">db_models.db</span> <span class="kn">import</span> <span class="n">get_session</span>
+<span class="kn">from</span> <span class="nn">schemas.auth</span> <span class="kn">import</span> <span class="n">User</span>
+<span class="kn">from</span> <span class="nn">db_models.orms</span> <span class="kn">import</span> <span class="n">UserORM</span><span class="p">,</span> <span class="n">ParkingHistoryORM</span><span class="p">,</span> <span class="n">BillingORM</span><span class="p">,</span> <span class="n">CarORM</span><span class="p">,</span> <span class="n">TariffORM</span>
+<span class="kn">from</span> <span class="nn">frontend.routes</span> <span class="kn">import</span> <span class="n">templates</span>
+
+<span class="n">auth</span> <span class="o">=</span> <span class="n">Authentication</span><span class="p">()</span>
+
+<span class="n">settings</span> <span class="o">=</span> <span class="n">EnvSettings</span><span class="p">()</span>
+
+<span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s1">&#39;/admin&#39;</span><span class="p">,</span>
+                   <span class="n">default_response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span>
+                   <span class="c1"># include_in_schema=False,</span>
+                   <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Admin&quot;</span><span class="p">])</span>
+
+
+<div class="viewcode-block" id="get_admin_page"><a class="viewcode-back" href="../../modules.html#admin.routes.get_admin_page">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_admin_page</span><span class="p">(</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+        <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the admin page.</span>
+
+<span class="sd">        This endpoint serves the admin page if the user is authenticated and has admin rights.</span>
+<span class="sd">        If the user is not authenticated or doesn&#39;t have admin rights, an appropriate message</span>
+<span class="sd">        or login page will be returned.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+<span class="sd">            db (AsyncSession): The database session dependency.</span>
+<span class="sd">            access_token (Annotated[str | None, Cookie()]): The access token from cookies, if available.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse:</span>
+<span class="sd">                - Admin page template if the user is an admin.</span>
+<span class="sd">                - Login form template if the user is not authenticated.</span>
+<span class="sd">                - Access denied template if the user is not an admin.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">user_db</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">user_db</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">user_db</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/mistake.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;Access denied. &quot;</span>
+                                                                                                <span class="s2">&quot;Admins only.&quot;</span><span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/admin.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user_db</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_user_management"><a class="viewcode-back" href="../../modules.html#admin.routes.get_user_management">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/user_management&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_user_management&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_user_management</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                              <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves the user management page for admin users.</span>
+
+<span class="sd">        If the user is not authenticated or does not have an admin role,</span>
+<span class="sd">        they are redirected to the login page.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current request object.</span>
+<span class="sd">            db (AsyncSession): The asynchronous database session, injected by FastAPI dependency.</span>
+<span class="sd">            access_token (Annotated[str | None, Cookie]): The JWT access token stored in cookies. Defaults to None if not provided.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse:</span>
+<span class="sd">                - Returns the &#39;admin/user_management.html&#39; template if the user is authenticated and has admin privileges.</span>
+<span class="sd">                - Returns the &#39;auth/login_form.html&#39; template if the user is not authenticated or lacks admin privileges.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span>
+                                          <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Admin access required&#39;</span><span class="p">})</span>
+
+    <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+                <span class="n">is_admin</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/user_management.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+                                                                     <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_tariff_management"><a class="viewcode-back" href="../../modules.html#admin.routes.get_tariff_management">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/tariff_management&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_tariff_management&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_tariff_management</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                                <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handles the GET request for the tariff management page.</span>
+
+<span class="sd">        This route allows an admin user to access the tariff management page. If the user is not logged in</span>
+<span class="sd">        or doesn&#39;t have admin privileges, they will be redirected to the login page.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The request object containing details of the current request.</span>
+<span class="sd">            db (AsyncSession): The asynchronous database session used to fetch the user data.</span>
+<span class="sd">            access_token (str, optional): The access token stored in cookies to identify the logged-in user.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse:</span>
+<span class="sd">                - If the user is not logged in, returns the login form page.</span>
+<span class="sd">                - If the user is logged in but not an admin, returns the login form page with an error message.</span>
+<span class="sd">                - If the user is an admin, returns the tariff management page.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span>
+                                          <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Admin access required&#39;</span><span class="p">})</span>
+
+    <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+                <span class="n">is_admin</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/tariff_management.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+                                                                       <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_blacklist_management"><a class="viewcode-back" href="../../modules.html#admin.routes.get_blacklist_management">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/blacklist_management&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_blacklist_management&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_blacklist_management</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                                   <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Renders the blacklist management page for an admin user.</span>
+
+<span class="sd">        If no access token is provided, or if the current user is not an admin, the login form is rendered.</span>
+<span class="sd">        Otherwise, the blacklist management page is returned.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The incoming HTTP request object.</span>
+<span class="sd">            access_token (str | None, optional): The access token from the user&#39;s cookie. Defaults to None.</span>
+<span class="sd">            db (AsyncSession): The database session for querying user data. Defaults to an asynchronous session from `get_session`.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: The HTML response to render the appropriate template, either the login form or the blacklist management page.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span>
+                                          <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Admin access required&#39;</span><span class="p">})</span>
+
+    <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+                <span class="n">is_admin</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/blacklist_management.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_stats_management"><a class="viewcode-back" href="../../modules.html#admin.routes.get_stats_management">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/stats_management&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_stats_management&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_stats_management</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                               <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Renders the admin statistics management page. If the user is not authenticated or is not an admin,</span>
+<span class="sd">        they will be redirected to the login page or receive a 403 error.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The incoming HTTP request object.</span>
+<span class="sd">            db (AsyncSession, optional): The database session dependency for querying data.</span>
+<span class="sd">            access_token (str | None, optional): The access token extracted from cookies to identify the user.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: The response with the rendered HTML page for stats management if the user is authorized.</span>
+<span class="sd">            Otherwise, it returns the login page or raises a 403 HTTP exception if the user is unauthorized.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not an admin or if authorization fails.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized&quot;</span><span class="p">)</span>
+
+    <span class="n">cars</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">CarORM</span><span class="p">))</span>
+    <span class="n">cars_list</span> <span class="o">=</span> <span class="n">cars</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+                <span class="n">is_admin</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/stats_management.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;cars&quot;</span><span class="p">:</span> <span class="n">cars_list</span><span class="p">,</span>
+        <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_user_list"><a class="viewcode-back" href="../../modules.html#admin.routes.get_user_list">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/user_list&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_user_list&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_user_list</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                        <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieve and display a list of users.</span>
+
+<span class="sd">        This route fetches a list of all users from the database and renders it</span>
+<span class="sd">        in the &#39;user_list.html&#39; template. If the user is not authenticated,</span>
+<span class="sd">        they are redirected to the login page.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+<span class="sd">            db (AsyncSession): An asynchronous session for interacting with the database.</span>
+<span class="sd">            access_token (str | None): A cookie containing the user&#39;s access token (optional).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the &#39;user_list.html&#39; template with the list of users</span>
+<span class="sd">            or redirects to the login page if the user is not authenticated.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">users</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">))</span>
+    <span class="n">user_list</span> <span class="o">=</span> <span class="n">users</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/user_list.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s2">&quot;users&quot;</span><span class="p">:</span> <span class="n">user_list</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="add_user_form"><a class="viewcode-back" href="../../modules.html#admin.routes.add_user_form">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/add_user&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">add_user_form</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                        <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Display the &#39;Add User&#39; form.</span>
+
+<span class="sd">        This route allows administrators to view the &#39;Add User&#39; form.</span>
+<span class="sd">        Non-authenticated users or non-admin users are redirected to the login page.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+<span class="sd">            db (AsyncSession): An asynchronous session for interacting with the database.</span>
+<span class="sd">            access_token (str | None): A cookie containing the user&#39;s access token (optional).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the &#39;add_user_form.html&#39; template or redirects to</span>
+<span class="sd">            the login page if the user is not authenticated or not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span>
+                                          <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Admin access required&#39;</span><span class="p">})</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/add_user_form.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="add_user"><a class="viewcode-back" href="../../modules.html#admin.routes.add_user">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/add_user&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">add_user</span><span class="p">(</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">username</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Form</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+        <span class="n">email</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Form</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+        <span class="n">password</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Form</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+        <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+        <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle the &#39;Add User&#39; form submission.</span>
+
+<span class="sd">        This route allows an admin to add a new user to the database. If the user</span>
+<span class="sd">        is not authenticated, or not an admin, they are redirected to the login page.</span>
+<span class="sd">        It ensures the username is unique and stores the user&#39;s details with a hashed password.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+<span class="sd">            username (str): The new user&#39;s username.</span>
+<span class="sd">            email (str): The new user&#39;s email.</span>
+<span class="sd">            password (str): The new user&#39;s password.</span>
+<span class="sd">            db (AsyncSession): An asynchronous session for interacting with the database.</span>
+<span class="sd">            access_token (str | None): A cookie containing the user&#39;s access token (optional).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the &#39;user_added.html&#39; template after successful addition,</span>
+<span class="sd">            or the &#39;add_user_form.html&#39; template with an error message if any checks fail.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span>
+                                          <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Admin access required&#39;</span><span class="p">})</span>
+
+    <span class="n">existing_user</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">))</span>
+
+    <span class="k">if</span> <span class="n">existing_user</span><span class="o">.</span><span class="n">scalar</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/add_user_form.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+            <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;Username already registered.&quot;</span>
+        <span class="p">})</span>
+
+    <span class="n">hashed_password</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_password_hash</span><span class="p">(</span><span class="n">password</span><span class="p">)</span>
+    <span class="n">new_user</span> <span class="o">=</span> <span class="n">UserORM</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">,</span> <span class="n">email</span><span class="o">=</span><span class="n">email</span><span class="p">,</span> <span class="n">password</span><span class="o">=</span><span class="n">hashed_password</span><span class="p">)</span>
+
+    <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_user</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/user_added.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="delete_user"><a class="viewcode-back" href="../../modules.html#admin.routes.delete_user">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/delete_user&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">delete_user</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Form</span><span class="p">(</span><span class="o">...</span><span class="p">),</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                      <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">       Delete a user by username.</span>
+
+<span class="sd">       This route allows an admin to delete a user from the database. If the user is</span>
+<span class="sd">       not authenticated or not an admin, they are redirected to the login page.</span>
+<span class="sd">       If the user does not exist, an error is shown.</span>
+
+<span class="sd">       Args:</span>
+<span class="sd">           request (Request): The HTTP request object.</span>
+<span class="sd">           username (str): The username of the user to be deleted.</span>
+<span class="sd">           db (AsyncSession): An asynchronous session for interacting with the database.</span>
+<span class="sd">           access_token (str | None): A cookie containing the user&#39;s access token (optional).</span>
+
+<span class="sd">       Returns:</span>
+<span class="sd">           TemplateResponse: Renders the &#39;user_deleted.html&#39; template after successful deletion,</span>
+<span class="sd">           or the &#39;delete_user_form.html&#39; template with an error message if any checks fail.</span>
+<span class="sd">       &quot;&quot;&quot;</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">user</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="n">user</span><span class="p">})</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">))</span>
+    <span class="n">deleted_user</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">deleted_user</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/delete_user_form.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+            <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="s2">&quot;User not found.&quot;</span>
+        <span class="p">})</span>
+
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">delete</span><span class="p">(</span><span class="n">deleted_user</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/user_deleted.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s2">&quot;username&quot;</span><span class="p">:</span> <span class="n">username</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_banned_users"><a class="viewcode-back" href="../../modules.html#admin.routes.get_banned_users">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/banned_users&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_banned_users&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_banned_users</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                           <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">       Retrieves the list of banned users from the database and renders the banned users list.</span>
+
+<span class="sd">       Args:</span>
+<span class="sd">           request (Request): The FastAPI request object.</span>
+<span class="sd">           db (AsyncSession): The asynchronous database session, retrieved via dependency injection.</span>
+<span class="sd">           access_token (Optional[str]): The access token stored in the browser&#39;s cookie.</span>
+
+<span class="sd">       Returns:</span>
+<span class="sd">           HTMLResponse: Renders the &#39;banned_users_list.html&#39; template with the banned users list,</span>
+<span class="sd">                         or redirects to the login form if the user is not authenticated.</span>
+<span class="sd">       &quot;&quot;&quot;</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="n">username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span>
+                                          <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+                                           <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="n">user</span><span class="p">})</span>
+
+    <span class="n">users</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">is_banned</span> <span class="o">==</span> <span class="kc">True</span><span class="p">))</span>
+    <span class="n">banned_users</span> <span class="o">=</span> <span class="n">users</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/banned_users_list.html&quot;</span><span class="p">,</span>
+                                      <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s2">&quot;banned_users&quot;</span><span class="p">:</span> <span class="n">banned_users</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="ban_user"><a class="viewcode-back" href="../../modules.html#admin.routes.ban_user">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/ban_user&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">ban_user</span><span class="p">(</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">username</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Form</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+        <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+        <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Bans a user by setting their &#39;is_banned&#39; flag to True in the database.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The FastAPI request object.</span>
+<span class="sd">            username (str): The username of the user to ban.</span>
+<span class="sd">            db (AsyncSession): The asynchronous database session, retrieved via dependency injection.</span>
+<span class="sd">            access_token (Optional[str]): The access token stored in the browser&#39;s cookie.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse: Renders a success page if the user is banned successfully,</span>
+<span class="sd">                          or an appropriate error page if there are issues (e.g., user not found).</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not authorized or user to ban is not found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to ban users&quot;</span><span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">))</span>
+    <span class="n">banned_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">banned_user</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;User not found&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">banned_user</span><span class="o">.</span><span class="n">is_banned</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/ban_user_form.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+            <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;User </span><span class="si">{</span><span class="n">banned_user</span><span class="o">.</span><span class="n">username</span><span class="si">}</span><span class="s2"> is already banned&quot;</span>
+        <span class="p">})</span>
+
+    <span class="n">banned_user</span><span class="o">.</span><span class="n">is_banned</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/ban_success.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;User </span><span class="si">{</span><span class="n">banned_user</span><span class="o">.</span><span class="n">username</span><span class="si">}</span><span class="s2"> banned successfully&quot;</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="unban_user"><a class="viewcode-back" href="../../modules.html#admin.routes.unban_user">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/unban_user&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">unban_user</span><span class="p">(</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">username</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">Form</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+        <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+        <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">       Unbans a user by setting their &#39;is_banned&#39; flag to False in the database.</span>
+
+<span class="sd">       Args:</span>
+<span class="sd">           request (Request): The FastAPI request object.</span>
+<span class="sd">           username (str): The username of the user to unban.</span>
+<span class="sd">           db (AsyncSession): The asynchronous database session, retrieved via dependency injection.</span>
+<span class="sd">           access_token (Optional[str]): The access token stored in the browser&#39;s cookie.</span>
+
+<span class="sd">       Returns:</span>
+<span class="sd">           HTMLResponse: Renders a success page if the user is unbanned successfully,</span>
+<span class="sd">                         or an appropriate error page if there are issues (e.g., user not found).</span>
+
+<span class="sd">       Raises:</span>
+<span class="sd">           HTTPException: If the user is not authorized or user to unban is not found.</span>
+<span class="sd">       &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to unban users&quot;</span><span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">))</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">404</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;User not found&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="o">.</span><span class="n">is_banned</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/unban_user_form.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+            <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+            <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;User </span><span class="si">{</span><span class="n">user</span><span class="o">.</span><span class="n">username</span><span class="si">}</span><span class="s2"> is not banned&quot;</span>
+        <span class="p">})</span>
+
+    <span class="n">user</span><span class="o">.</span><span class="n">is_banned</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/unban_success.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;User </span><span class="si">{</span><span class="n">user</span><span class="o">.</span><span class="n">username</span><span class="si">}</span><span class="s2"> unbanned successfully&quot;</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="list_tariffs"><a class="viewcode-back" href="../../modules.html#admin.routes.list_tariffs">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/tariffs&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">list_tariffs</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                       <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Displays the list of parking tariffs for administrators. If the user is not logged in</span>
+<span class="sd">        or lacks administrative privileges, they are redirected to the login page or</span>
+<span class="sd">        receive a &#39;403 Forbidden&#39; error.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current request object.</span>
+<span class="sd">            db (AsyncSession): The asynchronous database session dependency.</span>
+<span class="sd">            access_token (Optional[str], optional): The access token stored in cookies.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the tariff management page for admins, or the login page</span>
+<span class="sd">            if access is not granted.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the current user is not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to set parking tariff&quot;</span><span class="p">)</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">TariffORM</span><span class="p">)</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">TariffORM</span><span class="o">.</span><span class="n">set_date</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">current_tariff</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="n">all_tariffs</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">TariffORM</span><span class="p">)</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">TariffORM</span><span class="o">.</span><span class="n">set_date</span><span class="o">.</span><span class="n">desc</span><span class="p">()))</span>
+    <span class="n">tariffs</span> <span class="o">=</span> <span class="n">all_tariffs</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/tariff_management.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;current_tariff&quot;</span><span class="p">:</span> <span class="n">current_tariff</span><span class="p">,</span>
+        <span class="s2">&quot;tariffs&quot;</span><span class="p">:</span> <span class="n">tariffs</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="add_tariff"><a class="viewcode-back" href="../../modules.html#admin.routes.add_tariff">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/tariffs/add&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">add_tariff</span><span class="p">(</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+        <span class="n">new_rate</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">Form</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+        <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+        <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adds a new parking tariff to the database. Only administrators are allowed to perform this action.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current request object.</span>
+<span class="sd">            new_rate (float): The new tariff rate to be added.</span>
+<span class="sd">            db (AsyncSession): The asynchronous database session dependency.</span>
+<span class="sd">            access_token (Optional[str], optional): The access token stored in cookies.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the tariff added confirmation page, or the login page</span>
+<span class="sd">            if access is not granted.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the current user is not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to set parking tariff&quot;</span><span class="p">)</span>
+
+    <span class="n">new_tariff</span> <span class="o">=</span> <span class="n">TariffORM</span><span class="p">(</span><span class="n">tariff</span><span class="o">=</span><span class="n">new_rate</span><span class="p">,</span> <span class="n">set_date</span><span class="o">=</span><span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">date</span><span class="p">())</span>
+
+    <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_tariff</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/tariff_added.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Parking tariff set to </span><span class="si">{</span><span class="n">new_rate</span><span class="si">}</span><span class="s2"> successfully&quot;</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_last_tariff"><a class="viewcode-back" href="../../modules.html#admin.routes.get_last_tariff">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/get_last_tariff&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_last_tariff</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                          <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Retrieves and displays the most recent parking tariff. Only administrators can access this route.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current request object.</span>
+<span class="sd">            db (AsyncSession): The asynchronous database session dependency.</span>
+<span class="sd">            access_token (Optional[str], optional): The access token stored in cookies.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the page with the last tariff information or the login page</span>
+<span class="sd">            if access is not granted.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the current user is not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to set parking tariff&quot;</span><span class="p">)</span>
+
+    <span class="n">last_tariff</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">TariffORM</span><span class="p">)</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">TariffORM</span><span class="o">.</span><span class="n">set_date</span><span class="o">.</span><span class="n">desc</span><span class="p">(),</span> <span class="n">TariffORM</span><span class="o">.</span><span class="n">id</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span><span class="o">.</span><span class="n">limit</span><span class="p">(</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">tariff</span> <span class="o">=</span> <span class="n">last_tariff</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">tariff</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Тариф: </span><span class="si">{</span><span class="n">tariff</span><span class="o">.</span><span class="n">tariff</span><span class="si">}</span><span class="s2">, Дата встановлення: </span><span class="si">{</span><span class="n">tariff</span><span class="o">.</span><span class="n">set_date</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Тариф не знайдено&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/_last_tariff.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;tariff&quot;</span><span class="p">:</span> <span class="n">tariff</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="logout"><a class="viewcode-back" href="../../modules.html#admin.routes.logout">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/logout&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">logout</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                 <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Logs out the current user by deleting their access and refresh tokens from cookies. Only</span>
+<span class="sd">        administrators can perform this action.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current request object.</span>
+<span class="sd">            response (Response): The response object to manipulate cookies.</span>
+<span class="sd">            db (AsyncSession): The asynchronous database session dependency.</span>
+<span class="sd">            access_token (Optional[str], optional): The access token stored in cookies.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the logout success page or the login page if access is not granted.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the current user is not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to logout from admin panel&quot;</span><span class="p">)</span>
+
+    <span class="n">response</span><span class="o">.</span><span class="n">delete_cookie</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;access_token&quot;</span><span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">delete_cookie</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s2">&quot;refresh_token&quot;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/logout_success.html&quot;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="user_selection"><a class="viewcode-back" href="../../modules.html#admin.routes.user_selection">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/user_selection&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;user_selection&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">user_selection</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                         <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Renders the user selection page for administrators.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current request object.</span>
+<span class="sd">            db (AsyncSession): The database session for querying user data.</span>
+<span class="sd">            access_token (Optional[str]): The access token for user authentication.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse: Renders the user selection page or login page if not authenticated.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not found in the database.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">joinedload</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">cars</span><span class="p">))</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;mistake.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;User not found&quot;</span><span class="p">})</span>
+
+    <span class="n">users_res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">joinedload</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">cars</span><span class="p">)))</span>
+    <span class="n">users</span> <span class="o">=</span> <span class="n">users_res</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/user_selection.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;users&quot;</span><span class="p">:</span> <span class="n">users</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_user_stats"><a class="viewcode-back" href="../../modules.html#admin.routes.get_user_stats">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/user_stats&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_user_stats&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_user_stats</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">username</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                         <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Renders user statistics based on the given username.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current request object.</span>
+<span class="sd">            username (str): The username of the user whose statistics will be displayed.</span>
+<span class="sd">            db (AsyncSession): The database session for querying user and parking history data.</span>
+<span class="sd">            access_token (Optional[str]): The access token for user authentication.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse: Renders the user statistics page or login page if not authenticated.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not found in the database.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">joinedload</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">cars</span><span class="p">))</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">username</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">user</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;mistake.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;User not found&quot;</span><span class="p">})</span>
+
+    <span class="n">parking_history</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">joinedload</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">bill</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">car_id</span><span class="o">.</span><span class="n">in_</span><span class="p">(</span>
+            <span class="n">select</span><span class="p">(</span><span class="n">CarORM</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">CarORM</span><span class="o">.</span><span class="n">user_id</span> <span class="o">==</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="p">))</span>
+    <span class="p">)</span>
+    <span class="n">history</span> <span class="o">=</span> <span class="n">parking_history</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/user_stats.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span><span class="p">,</span>
+        <span class="s2">&quot;parking_history&quot;</span><span class="p">:</span> <span class="n">history</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="car_selection"><a class="viewcode-back" href="../../modules.html#admin.routes.car_selection">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/car_selection&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;car_selection&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">car_selection</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                        <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Renders the car selection page for administrators.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current request object.</span>
+<span class="sd">            db (AsyncSession): The database session for querying car data.</span>
+<span class="sd">            access_token (Optional[str]): The access token for user authentication.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse: Renders the car selection page or login page if not authenticated.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not authorized to access the page.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to access car selection&quot;</span><span class="p">)</span>
+
+    <span class="n">cars</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">CarORM</span><span class="p">))</span>
+    <span class="n">cars</span> <span class="o">=</span> <span class="n">cars</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/car_selection.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;cars&quot;</span><span class="p">:</span> <span class="n">cars</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_car_stats"><a class="viewcode-back" href="../../modules.html#admin.routes.get_car_stats">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/car_stats/</span><span class="si">{car_id}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_car_stats&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_car_stats</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">car_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span>
+                        <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Renders the statistics of a car based on the given car ID.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current request object.</span>
+<span class="sd">            car_id (int): The ID of the car whose statistics will be displayed.</span>
+<span class="sd">            db (AsyncSession): The database session for querying car and parking history data.</span>
+<span class="sd">            access_token (Optional[str]): The access token for user authentication.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse: Renders the car statistics page or login page if not authenticated.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not authorized or the car is not found.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to look car statistics&quot;</span><span class="p">)</span>
+
+    <span class="n">car</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">CarORM</span><span class="p">)</span><span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">selectinload</span><span class="p">(</span><span class="n">CarORM</span><span class="o">.</span><span class="n">parking_history</span><span class="p">))</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">CarORM</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">car_id</span><span class="p">))</span>
+    <span class="n">car</span> <span class="o">=</span> <span class="n">car</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">car</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;mistake.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s2">&quot;message&quot;</span><span class="p">:</span> <span class="s2">&quot;Car not found&quot;</span><span class="p">})</span>
+
+    <span class="n">parking_history</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">joinedload</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">bill</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">car_id</span> <span class="o">==</span> <span class="n">car_id</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">history</span> <span class="o">=</span> <span class="n">parking_history</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+                <span class="n">is_admin</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/car_stats.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;car_plate&quot;</span><span class="p">:</span> <span class="n">car</span><span class="o">.</span><span class="n">car_plate</span><span class="p">,</span>
+        <span class="s2">&quot;parking_history&quot;</span><span class="p">:</span> <span class="n">history</span><span class="p">,</span>
+        <span class="s2">&quot;user&quot;</span><span class="p">:</span> <span class="n">user</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_parking_stats"><a class="viewcode-back" href="../../modules.html#admin.routes.get_parking_stats">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/parking_stats&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_parking_stats&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_parking_stats</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                            <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Renders overall parking statistics for administrators.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current request object.</span>
+<span class="sd">            access_token (Optional[str]): The access token for user authentication.</span>
+<span class="sd">            db (AsyncSession): The database session for querying parking and billing data.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse: Renders the parking statistics page or login page if not authenticated.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not authorized to view parking statistics.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to look parking statistics&quot;</span><span class="p">)</span>
+
+    <span class="n">total_parkings_count</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">id</span><span class="p">)))</span>
+
+    <span class="n">total_cost</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">BillingORM</span><span class="o">.</span><span class="n">cost</span><span class="p">))</span>
+    <span class="n">total_earned</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">bill</span> <span class="k">for</span> <span class="n">bill</span> <span class="ow">in</span> <span class="n">total_cost</span><span class="o">.</span><span class="n">scalars</span><span class="p">())</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/parking_stats.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;total_parkings&quot;</span><span class="p">:</span> <span class="n">total_parkings_count</span><span class="p">,</span>
+        <span class="s2">&quot;total_earned&quot;</span><span class="p">:</span> <span class="n">total_earned</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_active_users_stats"><a class="viewcode-back" href="../../modules.html#admin.routes.get_active_users_stats">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/active_users_stats&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_active_users_stats&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_active_users_stats</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                                 <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the statistics of active users in the last 30 days.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The request object.</span>
+<span class="sd">            access_token (Optional[str]): Access token stored in cookies, used for authentication.</span>
+<span class="sd">            db (AsyncSession): The database session, passed as a dependency.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse: Renders the template with active user statistics.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not authorized or is not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to view user statistics&quot;</span><span class="p">)</span>
+
+    <span class="n">last_month</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+
+    <span class="n">active_users</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">id</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">select_from</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">UserORM</span><span class="p">,</span> <span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">car_id</span> <span class="o">==</span> <span class="n">UserORM</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">start_time</span> <span class="o">&gt;=</span> <span class="n">last_month</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="n">count_active_users</span> <span class="o">=</span> <span class="n">active_users</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/active_users_stats.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;active_users_count&quot;</span><span class="p">:</span> <span class="n">count_active_users</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_banned_users_stats"><a class="viewcode-back" href="../../modules.html#admin.routes.get_banned_users_stats">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/banned_users_stats&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_banned_users_stats&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_banned_users_stats</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                                 <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the statistics of banned users.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The request object.</span>
+<span class="sd">            access_token (Optional[str]): Access token stored in cookies, used for authentication.</span>
+<span class="sd">            db (AsyncSession): The database session, passed as a dependency.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse: Renders the template with banned user statistics.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not authorized or is not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to look user statistics&quot;</span><span class="p">)</span>
+    <span class="n">banned_users</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">id</span><span class="p">))</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">is_banned</span> <span class="o">==</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">count_banned_users</span> <span class="o">=</span> <span class="n">banned_users</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/banned_users_stats.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;banned_users_count&quot;</span><span class="p">:</span> <span class="n">count_banned_users</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_parking_occupancy_stats"><a class="viewcode-back" href="../../modules.html#admin.routes.get_parking_occupancy_stats">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/parking_occupancy_stats&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_parking_occupancy_stats&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_parking_occupancy_stats</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                                      <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span> <span class="n">period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;week&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get parking occupancy statistics for a given period.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The request object.</span>
+<span class="sd">            access_token (Optional[str]): Access token stored in cookies, used for authentication.</span>
+<span class="sd">            db (AsyncSession): The database session, passed as a dependency.</span>
+<span class="sd">            period (str): The time period for occupancy stats (&quot;week&quot;, &quot;month&quot;, or &quot;day&quot;).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse: Renders the template with parking occupancy statistics.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not authorized or is not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to look parking statistics&quot;</span><span class="p">)</span>
+
+    <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">period</span> <span class="o">==</span> <span class="s2">&quot;week&quot;</span><span class="p">:</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">weeks</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">period</span> <span class="o">==</span> <span class="s2">&quot;month&quot;</span><span class="p">:</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">total_parkings</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">id</span><span class="p">))</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">start_time</span> <span class="o">&gt;=</span> <span class="n">start_time</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">total_parkings_count</span> <span class="o">=</span> <span class="n">total_parkings</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="n">average_occupancy</span> <span class="o">=</span> <span class="p">(</span><span class="n">total_parkings_count</span> <span class="o">/</span> <span class="p">(</span><span class="n">settings</span><span class="o">.</span><span class="n">total_spots</span> <span class="o">*</span> <span class="mi">24</span><span class="p">))</span> <span class="o">*</span> <span class="mi">100</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/parking_occupancy_stats.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;average_occupancy_percent&quot;</span><span class="p">:</span> <span class="n">average_occupancy</span><span class="p">,</span>
+        <span class="s2">&quot;period&quot;</span><span class="p">:</span> <span class="n">period</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_max_cars_per_day_stats"><a class="viewcode-back" href="../../modules.html#admin.routes.get_max_cars_per_day_stats">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/max_cars_day_stats&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_max_cars_day_stats&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_max_cars_per_day_stats</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                                     <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get the maximum number of cars parked in a single day.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The request object.</span>
+<span class="sd">            access_token (Optional[str]): Access token stored in cookies, used for authentication.</span>
+<span class="sd">            db (AsyncSession): The database session, passed as a dependency.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            HTMLResponse: Renders the template with max cars parked per day statistics.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not authorized or is not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to look cars statistics&quot;</span><span class="p">)</span>
+    <span class="n">max_cars</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">id</span><span class="p">))</span><span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">date</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">start_time</span><span class="p">))</span>
+    <span class="p">)</span>
+    <span class="n">max_cars_per_day</span> <span class="o">=</span> <span class="n">max_cars</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/max_cars_day_stats.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;max_cars_in_a_day&quot;</span><span class="p">:</span> <span class="n">max_cars_per_day</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_peak_activity_time_stats"><a class="viewcode-back" href="../../modules.html#admin.routes.get_peak_activity_time_stats">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/peak_activity_time_stats&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_peak_activity_time_stats&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_peak_activity_time_stats</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                                       <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">       Get statistics on the peak parking activity time.</span>
+
+<span class="sd">       Args:</span>
+<span class="sd">           request (Request): The current HTTP request object.</span>
+<span class="sd">           access_token (str, optional): JWT access token stored in cookies.</span>
+<span class="sd">           db (AsyncSession): Database session for executing queries.</span>
+
+<span class="sd">       Returns:</span>
+<span class="sd">           TemplateResponse: Renders the template for peak activity time statistics.</span>
+
+<span class="sd">       Raises:</span>
+<span class="sd">           HTTPException: If the user is not authenticated or not an admin.</span>
+<span class="sd">       &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to look statistics&quot;</span><span class="p">)</span>
+    <span class="n">peak_time</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="s1">&#39;hour&#39;</span><span class="p">,</span> <span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">start_time</span><span class="p">),</span> <span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">id</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">group_by</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="s1">&#39;hour&#39;</span><span class="p">,</span> <span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">start_time</span><span class="p">))</span>
+        <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span>
+    <span class="p">)</span>
+    <span class="n">most_active_hour</span><span class="p">,</span> <span class="n">count</span> <span class="o">=</span> <span class="n">peak_time</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/peak_activity_time_stats.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;most_active_hour&quot;</span><span class="p">:</span> <span class="n">most_active_hour</span><span class="p">,</span>
+        <span class="s2">&quot;parking_count&quot;</span><span class="p">:</span> <span class="n">count</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_average_parking_duration_stats"><a class="viewcode-back" href="../../modules.html#admin.routes.get_average_parking_duration_stats">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/average_parking_duration_stats&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_average_parking_duration_stats&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_average_parking_duration_stats</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                                             <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get statistics on the average parking duration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current HTTP request object.</span>
+<span class="sd">            access_token (str, optional): JWT access token stored in cookies.</span>
+<span class="sd">            db (AsyncSession): Database session for executing queries.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the template for average parking duration statistics.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not authenticated or not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to look statistics&quot;</span><span class="p">)</span>
+    <span class="n">average_duration</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">avg</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">extract</span><span class="p">(</span><span class="s1">&#39;epoch&#39;</span><span class="p">,</span> <span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">end_time</span> <span class="o">-</span> <span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">start_time</span><span class="p">)))</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">end_time</span><span class="o">.</span><span class="n">isnot</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+    <span class="p">)</span>
+    <span class="n">average_duration_seconds</span> <span class="o">=</span> <span class="n">average_duration</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="n">average_duration_hours</span> <span class="o">=</span> <span class="n">average_duration_seconds</span> <span class="o">/</span> <span class="mi">3600</span> <span class="k">if</span> <span class="n">average_duration_seconds</span> <span class="k">else</span> <span class="mi">0</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/average_parking_duration_stats.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;average_parking_duration_hours&quot;</span><span class="p">:</span> <span class="n">average_duration_hours</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_parking_count_stats"><a class="viewcode-back" href="../../modules.html#admin.routes.get_parking_count_stats">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/parking_count_stats&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_parking_count_stats&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_parking_count_stats</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                                  <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">),</span> <span class="n">period</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;week&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get parking count statistics based on the specified time period.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current HTTP request object.</span>
+<span class="sd">            access_token (str, optional): JWT access token stored in cookies.</span>
+<span class="sd">            db (AsyncSession): Database session for executing queries.</span>
+<span class="sd">            period (str): Time period for which statistics are calculated (&#39;day&#39;, &#39;week&#39;, or &#39;month&#39;).</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the template for parking count statistics.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not authenticated or not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to look parking statistics&quot;</span><span class="p">)</span>
+    <span class="n">now</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">period</span> <span class="o">==</span> <span class="s2">&quot;week&quot;</span><span class="p">:</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">weeks</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">period</span> <span class="o">==</span> <span class="s2">&quot;month&quot;</span><span class="p">:</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">now</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">parking_count</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">id</span><span class="p">))</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">start_time</span> <span class="o">&gt;=</span> <span class="n">start_time</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">count</span> <span class="o">=</span> <span class="n">parking_count</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/parking_count_stats.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;parking_count&quot;</span><span class="p">:</span> <span class="n">count</span><span class="p">,</span>
+        <span class="s2">&quot;period&quot;</span><span class="p">:</span> <span class="n">period</span>
+    <span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_available_spots_stats"><a class="viewcode-back" href="../../modules.html#admin.routes.get_available_spots_stats">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/available_spots_stats&quot;</span><span class="p">,</span> <span class="n">response_class</span><span class="o">=</span><span class="n">HTMLResponse</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">&quot;get_available_spots_stats&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_available_spots_stats</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">],</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                                    <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Get statistics on available parking spots.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The current HTTP request object.</span>
+<span class="sd">            access_token (str, optional): JWT access token stored in cookies.</span>
+<span class="sd">            db (AsyncSession): Database session for executing queries.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the template for available parking spot statistics.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If the user is not authenticated or not an admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span> <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">})</span>
+
+    <span class="n">current_username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">current_username</span><span class="p">))</span>
+    <span class="n">current_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">current_user</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">current_user</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">403</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Not authorized to look parking statistics&quot;</span><span class="p">)</span>
+    <span class="n">occupied_spots</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">func</span><span class="o">.</span><span class="n">count</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">id</span><span class="p">))</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">end_time</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+    <span class="p">)</span>
+    <span class="n">occupied_spots_count</span> <span class="o">=</span> <span class="n">occupied_spots</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="n">available_spots</span> <span class="o">=</span> <span class="n">settings</span><span class="o">.</span><span class="n">total_spots</span> <span class="o">-</span> <span class="n">occupied_spots_count</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s2">&quot;admin/available_spots_stats.html&quot;</span><span class="p">,</span> <span class="p">{</span>
+        <span class="s2">&quot;request&quot;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+        <span class="s2">&quot;available_spots&quot;</span><span class="p">:</span> <span class="n">available_spots</span>
+    <span class="p">})</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">admin.routes</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2024, Project Team №4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>

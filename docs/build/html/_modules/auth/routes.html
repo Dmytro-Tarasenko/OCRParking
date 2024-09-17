@@ -1,0 +1,290 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>auth.routes &#8212; OCRParking 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nature.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">auth.routes</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for auth.routes</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Annotated</span><span class="p">,</span> <span class="n">Any</span>
+<span class="kn">from</span> <span class="nn">fastapi</span> <span class="kn">import</span> <span class="p">(</span><span class="n">APIRouter</span><span class="p">,</span>
+                     <span class="n">Depends</span><span class="p">,</span>
+                     <span class="n">HTTPException</span><span class="p">,</span>
+                     <span class="n">Response</span><span class="p">,</span>
+                     <span class="n">status</span><span class="p">,</span>
+                     <span class="n">Request</span><span class="p">,</span>
+                     <span class="n">Form</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">fastapi.responses</span> <span class="kn">import</span> <span class="n">RedirectResponse</span>
+
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">select</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.ext.asyncio</span> <span class="kn">import</span> <span class="n">AsyncSession</span>
+<span class="kn">from</span> <span class="nn">auth.auth</span> <span class="kn">import</span> <span class="n">Authentication</span>
+<span class="kn">from</span> <span class="nn">db_models.orms</span> <span class="kn">import</span> <span class="n">UserORM</span>
+<span class="kn">from</span> <span class="nn">schemas.auth</span> <span class="kn">import</span> <span class="n">UserLogin</span><span class="p">,</span> <span class="n">UserCreate</span><span class="p">,</span> <span class="n">User</span>
+<span class="kn">from</span> <span class="nn">db_models.db</span> <span class="kn">import</span> <span class="n">get_session</span>
+
+<span class="kn">from</span> <span class="nn">frontend.routes</span> <span class="kn">import</span> <span class="n">templates</span>
+
+<span class="n">auth</span> <span class="o">=</span> <span class="n">Authentication</span><span class="p">()</span>
+<span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;/auth&quot;</span><span class="p">,</span>
+                   <span class="n">tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;Authentication&quot;</span><span class="p">],</span>
+                   <span class="n">include_in_schema</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="get_register_form"><a class="viewcode-back" href="../../modules.html#auth.routes.get_register_form">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;/register&#39;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_register_form</span><span class="p">(</span><span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span>
+                            <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Serve the registration form page.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            response (Response): The HTTP response object.</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the registration form template.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/register_form.html&#39;</span><span class="p">,</span>
+                                      <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="register_user"><a class="viewcode-back" href="../../modules.html#auth.routes.register_user">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/register&quot;</span><span class="p">,</span> <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_201_CREATED</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">register_user</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+                        <span class="n">username</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Form</span><span class="p">()],</span>
+                        <span class="n">email</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Form</span><span class="p">()],</span>
+                        <span class="n">password</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Form</span><span class="p">()],</span>
+                        <span class="n">db</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)]</span>
+                        <span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle user registration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+<span class="sd">            username (str): The entered username.</span>
+<span class="sd">            email (str): The entered email.</span>
+<span class="sd">            password (str): The entered password.</span>
+<span class="sd">            db (AsyncSession): The database session.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the registration success page or returns</span>
+<span class="sd">            an error message if the username is already taken.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">UserCreate</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">,</span>
+                      <span class="n">password</span><span class="o">=</span><span class="n">password</span><span class="p">,</span>
+                      <span class="n">email</span><span class="o">=</span><span class="n">email</span><span class="p">)</span>
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">UserORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">UserORM</span><span class="o">.</span><span class="n">username</span> <span class="o">==</span> <span class="n">user</span><span class="o">.</span><span class="n">username</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">existing_user</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">existing_user</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span>
+            <span class="s1">&#39;auth/register_form.html&#39;</span><span class="p">,</span>
+            <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+                     <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;Username already registered&#39;</span><span class="p">})</span>
+
+    <span class="n">hashed_password</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_password_hash</span><span class="p">(</span><span class="n">user</span><span class="o">.</span><span class="n">password</span><span class="p">)</span>
+    <span class="n">new_user</span> <span class="o">=</span> <span class="n">UserORM</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">user</span><span class="o">.</span><span class="n">username</span><span class="p">,</span>
+                       <span class="n">email</span><span class="o">=</span><span class="n">user</span><span class="o">.</span><span class="n">email</span><span class="p">,</span>
+                       <span class="n">password</span><span class="o">=</span><span class="n">hashed_password</span>
+                       <span class="p">)</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">new_user</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/registration_success.html&#39;</span><span class="p">,</span>
+                                      <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+                                       <span class="s1">&#39;username&#39;</span><span class="p">:</span> <span class="n">new_user</span><span class="o">.</span><span class="n">username</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_login_form"><a class="viewcode-back" href="../../modules.html#auth.routes.get_login_form">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_login_form</span><span class="p">(</span><span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span>
+                         <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Serve the login form page.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            response (Response): The HTTP response object.</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the login form template.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span>
+                                      <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="login"><a class="viewcode-back" href="../../modules.html#auth.routes.login">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/login&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">login</span><span class="p">(</span><span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span>
+                <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+                <span class="n">username</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Form</span><span class="p">()],</span>
+                <span class="n">password</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Form</span><span class="p">()],</span>
+                <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Handle user login.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            response (Response): The HTTP response object.</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+<span class="sd">            username (str): The entered username.</span>
+<span class="sd">            password (str): The entered password.</span>
+<span class="sd">            db (AsyncSession): The database session.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the user dashboard page or returns</span>
+<span class="sd">            an error message if login credentials are invalid.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">user_login</span> <span class="o">=</span> <span class="n">UserLogin</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">,</span>
+                           <span class="n">password</span><span class="o">=</span><span class="n">password</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">auth</span><span class="o">.</span><span class="n">login</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">user_login</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;auth/login_form.html&#39;</span><span class="p">,</span>
+                                          <span class="n">context</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+                                                   <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="s1">&#39;User not found or invalid credentials&#39;</span><span class="p">})</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">)</span>
+    <span class="c1"># ret = templates.TemplateResponse(&#39;user/user.html&#39;,</span>
+    <span class="c1">#                                  {&#39;request&#39;: request,</span>
+    <span class="c1">#                                   &#39;user&#39;: user})</span>
+    <span class="c1"># ret.set_cookie(key=&#39;access_token&#39;, value=result[&#39;access_token&#39;])</span>
+    <span class="c1"># ret.set_cookie(key=&#39;refresh_token&#39;, value=result[&#39;refresh_token&#39;])</span>
+
+    <span class="n">response</span> <span class="o">=</span> <span class="n">RedirectResponse</span><span class="p">(</span><span class="s1">&#39;/user&#39;</span><span class="p">,</span>
+                                <span class="n">status_code</span><span class="o">=</span><span class="n">status</span><span class="o">.</span><span class="n">HTTP_303_SEE_OTHER</span><span class="p">)</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s1">&#39;access_token&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;access_token&#39;</span><span class="p">])</span>
+    <span class="n">response</span><span class="o">.</span><span class="n">set_cookie</span><span class="p">(</span><span class="n">key</span><span class="o">=</span><span class="s1">&#39;refresh_token&#39;</span><span class="p">,</span> <span class="n">value</span><span class="o">=</span><span class="n">result</span><span class="p">[</span><span class="s1">&#39;refresh_token&#39;</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">response</span></div>
+
+
+<div class="viewcode-block" id="refresh_token"><a class="viewcode-back" href="../../modules.html#auth.routes.refresh_token">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">post</span><span class="p">(</span><span class="s2">&quot;/refresh&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">refresh_token</span><span class="p">(</span><span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span> <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Refresh the access token using the refresh token.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            response (Response): The HTTP response object.</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            HTTPException: If no refresh token is found or the token is invalid.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: The new access token.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">refresh_token</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">cookies</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;refresh_token&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">refresh_token</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;No refresh token found&quot;</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="k">await</span> <span class="n">auth</span><span class="o">.</span><span class="n">refresh_token</span><span class="p">(</span><span class="n">response</span><span class="p">,</span> <span class="n">refresh_token</span><span class="p">)</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">result</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">HTTPException</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">401</span><span class="p">,</span> <span class="n">detail</span><span class="o">=</span><span class="s2">&quot;Invalid refresh token&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="admin_route"><a class="viewcode-back" href="../../modules.html#auth.routes.admin_route">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/admin&quot;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">admin_route</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span> <span class="o">=</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Admin-only route to display admin-specific content.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+<span class="sd">            db (AsyncSession): The database session.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            dict: A welcome message for the admin.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="k">await</span> <span class="n">auth</span><span class="o">.</span><span class="n">is_admin</span><span class="p">(</span><span class="n">request</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span>
+    <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;Hello, </span><span class="si">{</span><span class="n">user</span><span class="o">.</span><span class="n">username</span><span class="si">}</span><span class="s2">. You are an admin!&quot;</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="logout_user"><a class="viewcode-back" href="../../modules.html#auth.routes.logout_user">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;/logout&quot;</span><span class="p">,</span> <span class="n">response_model</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">logout_user</span><span class="p">(</span>
+        <span class="n">response</span><span class="p">:</span> <span class="n">Response</span><span class="p">,</span>
+        <span class="n">request</span><span class="p">:</span> <span class="n">Request</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Log the user out by removing their tokens.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            response (Response): The HTTP response object.</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: Renders the homepage with the user logged out.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">auth</span><span class="o">.</span><span class="n">logout</span><span class="p">(</span><span class="n">response</span><span class="p">)</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">res</span><span class="p">:</span>
+        <span class="n">ret</span> <span class="o">=</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;index.html&#39;</span><span class="p">,</span>
+                                         <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+                                          <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="n">user</span><span class="p">})</span>
+        <span class="n">ret</span><span class="o">.</span><span class="n">delete_cookie</span><span class="p">(</span><span class="s1">&#39;access_token&#39;</span><span class="p">)</span>
+        <span class="n">ret</span><span class="o">.</span><span class="n">delete_cookie</span><span class="p">(</span><span class="s1">&#39;refresh_token&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ret</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;index.html&#39;</span><span class="p">,</span>
+                                      <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+                                       <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="n">user</span><span class="p">})</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">auth.routes</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2024, Project Team №4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>

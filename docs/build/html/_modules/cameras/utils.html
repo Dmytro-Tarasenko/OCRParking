@@ -1,0 +1,458 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cameras.utils &#8212; OCRParking 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nature.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">cameras.utils</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for cameras.utils</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">datetime</span><span class="p">,</span> <span class="n">timedelta</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">select</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.orm</span> <span class="kn">import</span> <span class="n">selectinload</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.ext.asyncio</span> <span class="kn">import</span> <span class="n">AsyncSession</span>
+
+<span class="kn">from</span> <span class="nn">db_models.db</span> <span class="kn">import</span> <span class="n">get_session</span>
+<span class="kn">from</span> <span class="nn">db_models.orms</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">CarORM</span><span class="p">,</span>
+    <span class="n">BillingORM</span><span class="p">,</span>
+    <span class="n">ParkingHistoryORM</span><span class="p">,</span>
+    <span class="n">TariffORM</span><span class="p">,</span>
+    <span class="n">CreditLimitsORM</span><span class="p">,</span>
+    <span class="n">ServiceMessageORM</span><span class="p">,</span>
+    <span class="n">ParkingLotORM</span>
+    <span class="p">)</span>
+
+
+<div class="viewcode-block" id="is_user"><a class="viewcode-back" href="../../modules.html#cameras.utils.is_user">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">is_user</span><span class="p">(</span><span class="n">plate</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if a car with the given license plate exists in the database.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            plate (str): The license plate of the car.</span>
+<span class="sd">            db (AsyncSession): The database session to execute the query.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if the car exists, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">CarORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">CarORM</span><span class="o">.</span><span class="n">car_plate</span> <span class="o">==</span> <span class="n">plate</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">car</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar_one_or_none</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">car</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="is_banned"><a class="viewcode-back" href="../../modules.html#cameras.utils.is_banned">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">is_banned</span><span class="p">(</span><span class="n">plate</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if the owner of a car with the given license plate is banned.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            plate (str): The license plate of the car.</span>
+<span class="sd">            db (AsyncSession): The database session to execute the query.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if the owner is banned, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">CarORM</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">CarORM</span><span class="o">.</span><span class="n">car_plate</span> <span class="o">==</span> <span class="n">plate</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">selectinload</span><span class="p">(</span><span class="n">CarORM</span><span class="o">.</span><span class="n">owner</span><span class="p">))</span>
+    <span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">car</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar_one_or_none</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">car</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">is_banned</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="is_creditable"><a class="viewcode-back" href="../../modules.html#cameras.utils.is_creditable">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">is_creditable</span><span class="p">(</span><span class="n">plate</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check if the owner of a car with the given license plate is an admin and can be credited.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            plate (str): The license plate of the car.</span>
+<span class="sd">            db (AsyncSession): The database session to execute the query.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: True if the owner is an admin and can be credited, False otherwise.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+    <span class="k">async</span> <span class="k">with</span> <span class="n">get_session</span><span class="p">()</span> <span class="k">as</span> <span class="n">session</span><span class="p">:</span>
+        <span class="n">stmnt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">CarORM</span><span class="p">)</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">CarORM</span><span class="o">.</span><span class="n">car_plate</span> <span class="o">==</span> <span class="n">plate</span><span class="p">)</span> \
+            <span class="o">.</span><span class="n">options</span><span class="p">(</span><span class="n">selectinload</span><span class="p">(</span><span class="n">CarORM</span><span class="o">.</span><span class="n">owner</span><span class="p">))</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">session</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+        <span class="n">car</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">car</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">is_admin</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">True</span>
+    <span class="k">return</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="get_tariff_for_date"><a class="viewcode-back" href="../../modules.html#cameras.utils.get_tariff_for_date">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">get_tariff_for_date</span><span class="p">(</span><span class="n">date</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">,</span>
+                              <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetches the tariff for a specific date.</span>
+
+<span class="sd">        This function retrieves the tariff from the `TariffORM` table that was</span>
+<span class="sd">        set on or before the specified date. It orders the tariffs by `set_date`</span>
+<span class="sd">        in descending order to get the latest tariff up to that date.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            date (datetime.date): The date to find the tariff for.</span>
+<span class="sd">            db (AsyncSession): The asynchronous database session.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: The tariff value for the specified date.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">TariffORM</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">TariffORM</span><span class="o">.</span><span class="n">set_date</span> <span class="o">&lt;=</span> <span class="n">date</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">TariffORM</span><span class="o">.</span><span class="n">set_date</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span>
+        <span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">tariff</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">tariff</span><span class="o">.</span><span class="n">tariff</span></div>
+
+
+<div class="viewcode-block" id="get_credit_limit_for_date"><a class="viewcode-back" href="../../modules.html#cameras.utils.get_credit_limit_for_date">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">get_credit_limit_for_date</span><span class="p">(</span><span class="n">date</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">date</span><span class="p">,</span>
+                                    <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fetches the credit limit for a specific date.</span>
+
+<span class="sd">        This function retrieves the credit limit from the `CreditLimitsORM` table</span>
+<span class="sd">        that was set on or before the specified date. It orders the limits by `set_date`</span>
+<span class="sd">        in descending order to get the latest limit up to that date.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            date (datetime.date): The date to find the credit limit for.</span>
+<span class="sd">            db (AsyncSession): The asynchronous database session.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            float: The credit limit for the specified date.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">CreditLimitsORM</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">CreditLimitsORM</span><span class="o">.</span><span class="n">set_date</span> <span class="o">&lt;=</span> <span class="n">date</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">CreditLimitsORM</span><span class="o">.</span><span class="n">set_date</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span>
+        <span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">limit</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">limit</span><span class="o">.</span><span class="n">limit</span></div>
+
+
+<div class="viewcode-block" id="set_unleaved_ban"><a class="viewcode-back" href="../../modules.html#cameras.utils.set_unleaved_ban">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">set_unleaved_ban</span><span class="p">(</span><span class="n">car</span><span class="p">:</span> <span class="n">CarORM</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Sets a ban for a car that has not left the parking area.</span>
+
+<span class="sd">        This function marks the end time of a parking session for the specified car</span>
+<span class="sd">        if no end time is currently set (i.e., the car has not left). It calculates</span>
+<span class="sd">        the parking cost based on the tariff applicable at the start time and</span>
+<span class="sd">        marks the bill as sent and the user as banned. The user&#39;s account is</span>
+<span class="sd">        updated accordingly.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            car (CarORM): The car object representing the vehicle to be banned.</span>
+<span class="sd">            db (AsyncSession): The asynchronous database session.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: The bill ID of the updated parking session.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">car_id</span> <span class="o">==</span> <span class="n">car</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">end_time</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="o">.</span><span class="n">options</span><span class="p">(</span>
+            <span class="n">selectinload</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">bill</span><span class="p">),</span>
+            <span class="n">selectinload</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">car</span><span class="p">)</span><span class="o">.</span><span class="n">selectinload</span><span class="p">(</span><span class="n">CarORM</span><span class="o">.</span><span class="n">owner</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">parking_db</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+    <span class="n">parking_db</span><span class="o">.</span><span class="n">end_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span>
+
+    <span class="n">start_date</span> <span class="o">=</span> <span class="n">parking_db</span><span class="o">.</span><span class="n">start_time</span><span class="o">.</span><span class="n">date</span><span class="p">()</span>
+    <span class="n">tariff</span> <span class="o">=</span> <span class="k">await</span> <span class="n">get_tariff_for_date</span><span class="p">(</span><span class="n">start_date</span><span class="p">,</span> <span class="n">db</span><span class="p">)</span>
+    <span class="n">time_diff_minutes</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">parking_db</span><span class="o">.</span><span class="n">end_time</span> <span class="o">-</span> <span class="n">parking_db</span><span class="o">.</span><span class="n">start_time</span><span class="p">)</span><span class="o">.</span><span class="n">seconds</span> <span class="o">//</span> <span class="mi">60</span>
+    <span class="p">)</span>
+
+    <span class="n">cost</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">tariff</span> <span class="o">*</span> <span class="n">time_diff_minutes</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">parking_db</span><span class="o">.</span><span class="n">bill</span><span class="o">.</span><span class="n">cost</span> <span class="o">=</span> <span class="n">cost</span>
+    <span class="n">parking_db</span><span class="o">.</span><span class="n">bill</span><span class="o">.</span><span class="n">is_sent</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="n">parking_db</span><span class="o">.</span><span class="n">bill</span><span class="o">.</span><span class="n">is_ban</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">parking_db</span><span class="o">.</span><span class="n">car</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">is_banned</span> <span class="o">=</span> <span class="kc">True</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">parking_db</span><span class="o">.</span><span class="n">bill</span><span class="o">.</span><span class="n">id</span></div>
+
+
+<div class="viewcode-block" id="set_unparked_ban"><a class="viewcode-back" href="../../modules.html#cameras.utils.set_unparked_ban">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">set_unparked_ban</span><span class="p">(</span><span class="n">car</span><span class="p">:</span> <span class="n">CarORM</span><span class="p">,</span> <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Imposes a ban on a car if it has unpaid bills for more than 30 days, applies a fine, and updates the car&#39;s ban status.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            car (CarORM): The car object for which the ban is being applied.</span>
+<span class="sd">            db (AsyncSession): The database session used for querying and updating records.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: The ID of the bill generated for the fine.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">date_limit</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">today</span><span class="p">()</span><span class="o">.</span><span class="n">date</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">days</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
+    <span class="n">end_time</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">59</span><span class="p">)</span>
+    <span class="n">start_time</span> <span class="o">=</span> <span class="n">end_time</span> <span class="o">-</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">BillingORM</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">car_id</span> <span class="o">==</span> <span class="n">car</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+            <span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">end_time</span> <span class="o">&gt;</span> <span class="n">date_limit</span>
+            <span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">bills_db</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">bills_db</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">fine</span> <span class="o">=</span> <span class="nb">max</span><span class="p">([</span><span class="n">bill</span><span class="o">.</span><span class="n">cost</span> <span class="k">for</span> <span class="n">bill</span> <span class="ow">in</span> <span class="n">bills_db</span><span class="p">])</span>
+        <span class="n">fine</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">fine</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span> <span class="k">if</span> <span class="n">fine</span> <span class="o">&gt;=</span> <span class="mi">150</span> <span class="k">else</span> <span class="mi">150</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fine</span> <span class="o">=</span> <span class="mi">150</span>
+
+    <span class="n">parking_fine</span> <span class="o">=</span> <span class="n">ParkingHistoryORM</span><span class="p">(</span>
+        <span class="n">start_time</span><span class="o">=</span><span class="n">start_time</span><span class="p">,</span>
+        <span class="n">end_time</span><span class="o">=</span><span class="n">end_time</span>
+    <span class="p">)</span>
+    <span class="n">parking_fine</span><span class="o">.</span><span class="n">car</span> <span class="o">=</span> <span class="n">car</span>
+    <span class="n">bill_fine</span> <span class="o">=</span> <span class="n">BillingORM</span><span class="p">(</span>
+        <span class="n">user_id</span><span class="o">=</span><span class="n">car</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+        <span class="n">cost</span><span class="o">=</span><span class="n">fine</span><span class="p">,</span>
+        <span class="n">is_sent</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">is_ban</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="n">parking_fine</span><span class="o">.</span><span class="n">bill</span> <span class="o">=</span> <span class="n">bill_fine</span>
+    <span class="n">parking_fine</span><span class="o">.</span><span class="n">car</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">is_banned</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">parking_fine</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="n">parking_current</span> <span class="o">=</span> <span class="n">ParkingHistoryORM</span><span class="p">(</span>
+        <span class="n">start_time</span><span class="o">=</span><span class="n">end_time</span> <span class="o">+</span> <span class="n">timedelta</span><span class="p">(</span><span class="n">minutes</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="n">bill_new</span> <span class="o">=</span> <span class="n">BillingORM</span><span class="p">(</span>
+        <span class="n">user_id</span><span class="o">=</span><span class="n">car</span><span class="o">.</span><span class="n">owner</span><span class="o">.</span><span class="n">id</span>
+    <span class="p">)</span>
+    <span class="n">parking_current</span><span class="o">.</span><span class="n">bill</span> <span class="o">=</span> <span class="n">bill_new</span>
+    <span class="n">parking_current</span><span class="o">.</span><span class="n">car</span> <span class="o">=</span> <span class="n">car</span>
+
+    <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">parking_current</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">bill_fine</span><span class="o">.</span><span class="n">id</span></div>
+
+
+<div class="viewcode-block" id="send_ban_message"><a class="viewcode-back" href="../../modules.html#cameras.utils.send_ban_message">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">send_ban_message</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                           <span class="n">bill_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                           <span class="n">ban_message</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+                           <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sends a ban notification to the user with a specific bill ID.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            user_id (int): The ID of the user to whom the message is being sent.</span>
+<span class="sd">            bill_id (int): The ID of the bill associated with the ban.</span>
+<span class="sd">            ban_message (str): The message content to be sent, with details about the ban.</span>
+<span class="sd">            db (AsyncSession): The database session used for querying and updating records.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: The ID of the generated message.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">BillingORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">BillingORM</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">bill_id</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">bill</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar_one</span><span class="p">()</span>
+
+    <span class="n">ban_message</span> <span class="o">+=</span> <span class="sa">f</span><span class="s2">&quot; Сплатіть рахунок № </span><span class="si">{</span><span class="n">bill</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> на суму </span><span class="si">{</span><span class="n">bill</span><span class="o">.</span><span class="n">cost</span><span class="si">}</span><span class="s2"> для зняття заборони.&quot;</span>
+
+    <span class="n">message</span> <span class="o">=</span> <span class="n">ServiceMessageORM</span><span class="p">(</span>
+        <span class="n">message</span><span class="o">=</span><span class="n">ban_message</span><span class="p">,</span>
+        <span class="n">user_id</span><span class="o">=</span><span class="n">user_id</span><span class="p">,</span>
+        <span class="n">bill_id</span><span class="o">=</span><span class="n">bill</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+        <span class="n">is_ban</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+    <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">message</span><span class="o">.</span><span class="n">id</span></div>
+
+
+<div class="viewcode-block" id="send_message"><a class="viewcode-back" href="../../modules.html#cameras.utils.send_message">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">send_message</span><span class="p">(</span><span class="n">user_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                       <span class="n">bill_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+                       <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sends a message to the user regarding the payment of a specific bill.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            user_id (int): The ID of the user to whom the message is being sent.</span>
+<span class="sd">            bill_id (int): The ID of the bill associated with the message.</span>
+<span class="sd">            db (AsyncSession): The database session used for querying and updating records.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            int: The ID of the generated message.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">select</span><span class="p">(</span><span class="n">BillingORM</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">BillingORM</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">bill_id</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">options</span><span class="p">(</span>
+            <span class="n">selectinload</span><span class="p">(</span><span class="n">BillingORM</span><span class="o">.</span><span class="n">history</span><span class="p">),</span>
+            <span class="n">selectinload</span><span class="p">(</span><span class="n">BillingORM</span><span class="o">.</span><span class="n">history</span><span class="p">)</span><span class="o">.</span><span class="n">selectinload</span><span class="p">(</span><span class="n">ParkingHistoryORM</span><span class="o">.</span><span class="n">car</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">bill</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar_one</span><span class="p">()</span>
+
+    <span class="n">start_date</span> <span class="o">=</span> <span class="n">bill</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">start_time</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y-%m-</span><span class="si">%d</span><span class="s1">&#39;</span><span class="p">)</span>
+
+    <span class="n">message</span> <span class="o">=</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot; Сплатіть рахунок № </span><span class="si">{</span><span class="n">bill</span><span class="o">.</span><span class="n">id</span><span class="si">}</span><span class="s2"> на суму </span><span class="si">{</span><span class="n">bill</span><span class="o">.</span><span class="n">cost</span><span class="si">}</span><span class="s2">&quot;</span>
+               <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot; за паркування автомобіля </span><span class="si">{</span><span class="n">bill</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">car</span><span class="o">.</span><span class="n">car_plate</span><span class="si">}</span><span class="s2">&quot;</span>
+               <span class="o">+</span> <span class="sa">f</span><span class="s2">&quot; початок </span><span class="si">{</span><span class="n">start_date</span><span class="si">}</span><span class="s2">.&quot;</span>
+               <span class="p">)</span>
+
+    <span class="n">message</span> <span class="o">=</span> <span class="n">ServiceMessageORM</span><span class="p">(</span>
+        <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">,</span>
+        <span class="n">user_id</span><span class="o">=</span><span class="n">user_id</span><span class="p">,</span>
+        <span class="n">bill_id</span><span class="o">=</span><span class="n">bill</span><span class="o">.</span><span class="n">id</span><span class="p">,</span>
+        <span class="n">is_ban</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">)</span>
+
+    <span class="n">db</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">message</span><span class="p">)</span>
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">message</span><span class="o">.</span><span class="n">id</span></div>
+
+
+<div class="viewcode-block" id="occupy_lot"><a class="viewcode-back" href="../../modules.html#cameras.utils.occupy_lot">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">occupy_lot</span><span class="p">(</span>
+        <span class="n">car_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Occupies a free parking lot with a specific car ID.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            car_id (int): The ID of the car that will occupy the lot.</span>
+<span class="sd">            db (AsyncSession): The database session used for querying and updating records.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">ParkingLotORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ParkingLotORM</span><span class="o">.</span><span class="n">car_id</span><span class="o">.</span><span class="n">is_</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">free_lots</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="n">ids</span> <span class="o">=</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">lot</span><span class="o">.</span><span class="n">id</span> <span class="k">for</span> <span class="n">lot</span> <span class="ow">in</span> <span class="n">free_lots</span><span class="p">)</span>
+    <span class="n">occupied</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span>
+
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">ParkingLotORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ParkingLotORM</span><span class="o">.</span><span class="n">id</span> <span class="o">==</span> <span class="n">occupied</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">lot</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar_one_or_none</span><span class="p">()</span>
+    <span class="n">lot</span><span class="o">.</span><span class="n">car_id</span> <span class="o">=</span> <span class="n">car_id</span>
+
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">return</span></div>
+
+
+<div class="viewcode-block" id="free_lot"><a class="viewcode-back" href="../../modules.html#cameras.utils.free_lot">[docs]</a><span class="k">async</span> <span class="k">def</span> <span class="nf">free_lot</span><span class="p">(</span>
+        <span class="n">car_id</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">db</span><span class="p">:</span> <span class="n">AsyncSession</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Frees a parking lot by removing the associated car ID.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            car_id (int): The ID of the car currently occupying the lot.</span>
+<span class="sd">            db (AsyncSession): The database session used for querying and updating records.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">ParkingLotORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ParkingLotORM</span><span class="o">.</span><span class="n">car_id</span> <span class="o">==</span> <span class="n">car_id</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">lot</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalar</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">lot</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span>
+    
+    <span class="n">lot</span><span class="o">.</span><span class="n">car_id</span> <span class="o">=</span> <span class="kc">None</span>
+    
+    <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+    <span class="k">return</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">cameras.utils</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2024, Project Team №4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>
