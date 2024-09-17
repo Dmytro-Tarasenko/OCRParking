@@ -1,19 +1,26 @@
-{% extends "base.html" %}}
+{% extends "base.html" %}
 {% block content %}
-        {% if error %}
         <div>
-            <h1>Нештатна ситуація</h1>
-            <p>{{error}}</p>
+          <div class="parking-info">
+            <h2 class="parking-title">Паркомісця</h2>
+            <p class="parking-status">вільні 15 з 30</p>
         </div>
-        {% endif %}
+        <div id="turnpike" class="barrier-info"
+        hx-get="{{url_for('get_turnpike_down')}}"
+        hx-swap="innerHTML"
+        hx-trigger="load"
+        >        
+        </div>
+        </div>
         <section class="hero">
             <h2>Система камер автоматичної парковки</h2>
             <div>
                 <h2>Камера в'їзду</h2>
-                <form action="{{ url_for ('post_enter_camera')}}" method="post">
+                <form hx-post="{{ url_for ('post_enter_camera')}}" hx-target="#turnpike"
+                enctype="multipart/form-data">
                     <h1>Photo of entering car</h1>
                     <div>
-                      <input type="text" id="inCamera" name="car_plate" placeholder="Carplate" required>
+                      <input type="file" id="inCamera" name="car_plate" required>
                       <label for="inCamera">Carplate</label>
                     </div>
                     <div>
@@ -23,24 +30,18 @@
             </div>
             <div>
                 <h2>Камера виїзду</h2>
-                <form action="{{ url_for ('post_leave_camera')}}" method="post">
+                <form hx-post="{{ url_for ('post_leave_camera')}}" hx-target="#turnpike"
+                      enctype="multipart/form-data"
+                >
                     <h1>Photo of leaving car</h1>
                     <div>
-                      <input type="text" id="outCamera" name="car_plate" placeholder="Carplate" required>
+                      <input type="file" id="outCamera" name="car_plate" required>
                       <label for="outCamera">Carplate</label>
                     </div>
                     <div>
                     <button type="submit">Process car</button>
                     </div>
                   </form>
-            </div>
-            <div>
-                <h2>Паркомісця</h2>
-                <p>вільні 15 з 30</p>
-            </div>
-            <div>
-                <h2>Шлагбаум</h2>
-                <p>Опущений</p>
             </div>
         </section>
 {% endblock %}

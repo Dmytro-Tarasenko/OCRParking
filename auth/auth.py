@@ -11,12 +11,30 @@ from settings import settings
 
 
 class Authentication:
+    """
+        Authentication class responsible for user authentication, token generation,
+        and authorization for the OCRParking system.
+
+        Attributes:
+            hash_service (bcrypt): Service for password hashing and verification.
+            oauth2_schema (OAuth2PasswordBearer): Security schema for handling OAuth2 password tokens.
+        """
     # pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     hash_service = bcrypt
     oauth2_schema = security.OAuth2PasswordBearer(tokenUrl="token")
+
     # oauth2_schema = security.OAuth2PasswordBearer(tokenUrl="/auth/login")
 
     def get_password_hash(self, password: str) -> str:
+        """
+                Hashes the given password using bcrypt.
+
+                Args:
+                    password (str): The plaintext password to be hashed.
+
+                Returns:
+                    str: The hashed password.
+                """
         return self.hash_service.hashpw(
             password=password.encode(),
             salt=self.hash_service.gensalt()
@@ -27,6 +45,16 @@ class Authentication:
             plain_password: str,
             hashed_password: str
     ) -> bool:
+        """
+                Verifies a password against its hashed version.
+
+                Args:
+                    plain_password (str): The plaintext password.
+                    hashed_password (str): The hashed password for comparison.
+
+                Returns:
+                    bool: True if the password matches, False otherwise.
+                """
 
         return self.hash_service.checkpw(
             password=plain_password.encode(),
@@ -37,6 +65,16 @@ class Authentication:
                             data: dict,
                             expires_delta: timedelta | None = None
                             ) -> str:
+        """
+                Creates a JWT access token.
+
+                Args:
+                    data (dict): The data to encode in the token, typically user identification.
+                    expires_delta (timedelta, optional): The token expiration time. Defaults to settings.
+
+                Returns:
+                    str: The encoded JWT token.
+                """
         to_encode = data.copy()
         expire = (
                 datetime.now()
@@ -52,6 +90,16 @@ class Authentication:
                              data: dict,
                              expires_delta: timedelta | None = None
                              ) -> str:
+        """
+                Creates a JWT refresh token.
+
+                Args:
+                    data (dict): The data to encode in the token, typically user identification.
+                    expires_delta (timedelta, optional): The token expiration time. Defaults to settings.
+
+                Returns:
+                    str: The encoded JWT refresh token.
+                """
         to_encode = data.copy()
         expire = (
                 datetime.now()
@@ -64,6 +112,19 @@ class Authentication:
                           algorithm=settings.algorithm)
 
     def decode_token(self, token: str, secret_key: str) -> str:
+        """
+                Decodes a JWT token and retrieves the username from the payload.
+
+                Args:
+                    token (str): The JWT token to decode.
+                    secret_key (str): The key used to decode the token.
+
+                Returns:
+                    str: The username (subject) encoded in the token.
+
+                Raises:
+                    HTTPException: If the token is invalid or missing the 'sub' field.
+                """
         try:
             payload = jwt.decode(token,
                                  secret_key,
@@ -81,6 +142,17 @@ class Authentication:
                                 password: str,
                                 db: AsyncSession
                                 ) -> UserModel | None:
+        """
+                Authenticates a user by verifying the username and password.
+
+                Args:
+                    username (str): The username of the user.
+                    password (str): The plaintext password of the user.
+                    db (AsyncSession): The database session.
+
+                Returns:
+                    UserModel | None: The authenticated user or None if authentication fails.
+                """
         result = await db.execute(select(UserModel).where(UserModel.username == username))
         user = result.scalar()
         if user and self.verify_password(password, user.password):
@@ -91,6 +163,17 @@ class Authentication:
                     response: Response,
                     user_login: UserLogin,
                     db: AsyncSession) -> dict:
+        """
+                Handles user login by generating access and refresh tokens and setting cookies.
+
+                Args:
+                    response (Response): The response object to set cookies.
+                    user_login (UserLogin): The login data (username and password).
+                    db (AsyncSession): The database session.
+
+                Returns:
+                    dict: A dictionary containing the access and refresh tokens.
+                """
         user = await self.authenticate_user(user_login.username,
                                             user_login.password,
                                             db)
@@ -114,6 +197,16 @@ class Authentication:
                             response: Response,
                             refresh_token: str
                             ) -> dict:
+        """
+                Refreshes tokens by generating new access and refresh tokens and setting cookies.
+
+                Args:
+                    response (Response): The response object to set cookies.
+                    refresh_token (str): The current refresh token.
+
+                Returns:
+                    dict: A dictionary containing the new access and refresh tokens.
+                """
 
         username = self.decode_token(refresh_token, settings.refresh_secret)
         new_access_token = self.create_access_token(data={"sub": username})
@@ -130,6 +223,18 @@ class Authentication:
                 "refresh_token": new_refresh_token}
 
     def get_current_user(self, request: Request) -> str:
+        """
+                Retrieves the current user from the access token in cookies.
+
+                Args:
+                    request (Request): The request object containing cookies.
+
+                Returns:
+                    str: The username of the current user.
+
+                Raises:
+                    HTTPException: If the user is not authenticated.
+                """
         token = request.cookies.get("access_token")
         if not token:
             raise HTTPException(status_code=401,
@@ -139,6 +244,19 @@ class Authentication:
     async def is_admin(self, request: Request,
                        db: AsyncSession
                        ) -> UserModel:
+        """
+                Verifies if the current user is an admin.
+
+                Args:
+                    request (Request): The request object containing cookies.
+                    db (AsyncSession): The database session.
+
+                Returns:
+                    UserModel: The user model if the user is an admin.
+
+                Raises:
+                    HTTPException: If the user is not authenticated or lacks admin privileges.
+                """
         token = request.cookies.get("access_token")
         if not token:
             raise HTTPException(status_code=401,
@@ -152,6 +270,15 @@ class Authentication:
         return user
 
     async def logout(self, response: Response):
+        """
+                Logs out the user by deleting the authentication cookies.
+
+                Args:
+                    response (Response): The response object to delete cookies.
+
+                Returns:
+                    dict: A message confirming successful logout.
+                """
 
         response.delete_cookie("access_token")
         response.delete_cookie("refresh_token")

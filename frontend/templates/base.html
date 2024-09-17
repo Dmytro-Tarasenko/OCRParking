@@ -13,7 +13,7 @@
     <div class="page">
         <header>
             <div class="logo">
-                <img src="img/logo.png" alt="Логотип OCRParking">
+                <img src="{{ url_for('static', path='img/logo.png')}}" width=48 alt="Логотип OCRParking">
             </div>
             <h1>Система управління паркуванням</h1>
             <nav>
@@ -27,10 +27,9 @@
                     {% if user %}
                     <li><a href="{{ url_for('get_user_page') }}">Моя сторінка</a></li>
                     {% if user.is_admin %}
-                    <li><a href="#">Адміністрування</a></li>
+                    <li><a href="{{ url_for('get_admin_page')}}">Адміністрування</a></li>
                     {% endif %}
-                    <li><a href="#">{{ user.username }}</a></li>
-                    <li><a href="{{ url_for('logout_user') }}">Вийти</a></li>
+                    <li><a href="{{ url_for('logout_user') }}">Вийти ({{ user.username }})</a></li>
                     {% endif %}
                 </ul>
             </nav>

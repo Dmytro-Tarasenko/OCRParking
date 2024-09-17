@@ -13,7 +13,7 @@
             <th>Заїзд</th>
             <th>Виїзд</th>
             <th>Вартість</th>
-            <th>Статус</th>
+            <th>Дія</th>
         </tr>
     </thead>
     <tbody>
@@ -23,7 +23,13 @@
             <th>{{ bill.history.start_time }}</th>
             <th>{{ bill.history.end_time }}</th>
             <th>{{ bill.cost }}</th>
-            <th>{{ bill.history.is_paid }}</th>
+            <th>
+                {% if bill.status=='paid' %}
+                Оплачений
+                {% else %}
+                <a class=button href="{{ url_for('post_paybill', bill_id=bill.id)}}">Оплатити разунок</a>
+                {% endif %}
+            </th>
         </tr>
         {% endfor %}
     </tbody>
