@@ -1,4 +1,8 @@
 {% block content %}
-    <h2>Доступні місця на паркуванні</h2>
-    <p>Кількість доступних місць: {{ available_spots }}</p>
+<div class="parking-availability-section">
+  <h2 class="section-title">Доступні місця на паркуванні</h2>
+  <p class="available-spots-count">
+    Кількість доступних місць: <strong>{{ available_spots }}</strong>
+  </p>
+</div>
 {% endblock %}

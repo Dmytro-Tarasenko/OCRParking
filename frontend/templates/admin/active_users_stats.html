@@ -1,4 +1,8 @@
 {% block content %}
-<h2>Активні користувачі за останні 30 днів</h2>
-<p>Кількість активних користувачів: {{ active_users_count }}</p>
+<div class="active-users-section">
+  <h2 class="section-title">Активні користувачі за останні 30 днів</h2>
+  <p class="active-users-count">
+    Кількість активних користувачів: <strong>{{ active_users_count }}</strong>
+  </p>
+</div>
 {% endblock %}

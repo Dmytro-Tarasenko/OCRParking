@@ -1,5 +1,16 @@
 {% block content %}
-    <h2>Загальна статистика паркування</h2>
-    <p>Кількість паркувань: {{ total_parkings }}</p>
-    <p>Зароблено: {{ total_earned }} грн</p>
+<div class="container mt-5">
+  <div class="card">
+    <div class="card-body">
+      <h2 class="card-title">Загальна статистика паркування</h2>
+      <p class="card-text">
+        Кількість паркувань:
+        <span class="badge bg-primary">{{ total_parkings }}</span>
+      </p>
+      <p class="card-text">
+        Зароблено: <span class="badge bg-success">{{ total_earned }} грн</span>
+      </p>
+    </div>
+  </div>
+</div>
 {% endblock %}

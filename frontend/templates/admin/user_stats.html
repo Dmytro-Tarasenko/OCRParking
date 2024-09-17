@@ -1,33 +1,43 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h2>Статистика користувача {{ user.username }}</h2>
-<p>Email: {{ user.email }}</p>
+<div class="container mt-5">
+  <h2>Статистика користувача {{ user.username }}</h2>
+  <p>Email: {{ user.email }}</p>
 
-<h3>Машини користувача</h3>
-<ul>
-    {% for car in user.cars %}
-    <li>{{ car.car_plate }}</li>
-    {% endfor %}
-</ul>
+  <div class="card">
+    <div class="card-header">
+      Машини користувача
+    </div>
+    <ul class="list-group list-group-flush">
+      {% for car in user.cars %}
+      <li class="list-group-item">{{ car.car_plate }}</li>
+      {% endfor %}
+    </ul>
+  </div>
 
-<h3>Історія паркувань</h3>
-<table>
-    <thead>
+  <div class="card mt-3">
+    <div class="card-header">
+      Історія паркувань
+    </div>
+    <table class="table">
+      <thead>
         <tr>
-            <th>Час початку</th>
-            <th>Час завершення</th>
-            <th>Вартість</th>
+          <th>Час початку</th>
+          <th>Час завершення</th>
+          <th>Вартість</th>
         </tr>
-    </thead>
-    <tbody>
+      </thead>
+      <tbody>
         {% for record in parking_history %}
         <tr>
-            <td>{{ record.start_time }}</td>
-            <td>{{ record.end_time or 'Триває' }}</td>
-            <td>{{ record.bill.cost if record.bill else 'Невідомо' }}</td>
+          <td>{{ record.start_time }}</td>
+          <td>{{ record.end_time or 'Триває' }}</td>
+          <td>{{ record.bill.cost if record.bill else 'Невідомо' }}</td>
         </tr>
         {% endfor %}
-    </tbody>
-</table>
+      </tbody>
+    </table>
+  </div>
+</div>
 {% endblock %}

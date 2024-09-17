@@ -1,35 +1,51 @@
-{% extends "base.html" %}
+{% extends "base.html" %} {% block content %}
+<div class="user-ban-management">
+  <h2 class="section-title">Керування баном користувачів</h2>
+  <p class="section-description">
+    Тут можна додати користувачів до бана або зняти з нього.
+  </p>
 
-{% block content %}
-    <h2>Керування баном користувачів</h2>
-    <p>Тут можна додати користувачів до бана або зняти з нього.</p>
-
-    <!-- Форма для додавання користувача до бана -->
-    <h3>Додати користувача до бана</h3>
-    <form action="/admin/ban_user" method="post">
-        <div>
-            <label for="ban_username">Ім'я користувача:</label>
-            <input type="text" id="ban_username" name="username" required>
-        </div>
-        <button type="submit">Додати в бан</button>
-    </form>
-
-    <!-- Список забанених користувачів -->
-    <h3>Забанені користувачі</h3>
-    <div
-        hx-get="{{ url_for('get_banned_users') }}"
-        hx-trigger="load"
-        hx-swap="innerHTML">
-        <!-- Список забанених користувачів буде завантажено сюди -->
+  <!-- Форма для додавання користувача до бана -->
+  <h3 class="form-title">Додати користувача до бана</h3>
+  <form action="/admin/ban_user" method="post" class="form-container">
+    <div class="form-group">
+      <label for="ban_username" class="form-label">Ім'я користувача:</label>
+      <input
+        type="text"
+        id="ban_username"
+        name="username"
+        required
+        class="form-input"
+      />
     </div>
+    <button type="submit" class="btn-primary">Додати в бан</button>
+  </form>
 
-    <!-- Форма для зняття бана з користувача -->
-    <h3>Зняти бан з користувача</h3>
-    <form action="/admin/unban_user" method="post">
-        <div>
-            <label for="unban_username">Ім'я користувача:</label>
-            <input type="text" id="unban_username" name="username" required>
-        </div>
-        <button type="submit">Зняти бан</button>
-    </form>
+  <!-- Список забанених користувачів -->
+  <h3 class="form-title">Забанені користувачі</h3>
+  <div
+    class="banned-users-list"
+    hx-get="{{ url_for('get_banned_users') }}"
+    hx-trigger="load"
+    hx-swap="innerHTML"
+  >
+    <!-- Список забанених користувачів буде завантажено сюди -->
+  </div>
+
+  <!-- Форма для зняття бана з користувача -->
+  <h3 class="form-title">Зняти бан з користувача</h3>
+  <form action="/admin/unban_user" method="post" class="form-container">
+    <div class="form-group">
+      <label for="unban_username" class="form-label">Ім'я користувача:</label>
+      <input
+        type="text"
+        id="unban_username"
+        name="username"
+        required
+        class="form-input"
+      />
+    </div>
+    <button type="submit" class="btn-danger">Зняти бан</button>
+  </form>
+</div>
 {% endblock %}
