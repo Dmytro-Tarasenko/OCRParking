@@ -14,10 +14,6 @@ weights_path = Path(__file__).parent / 'model' / 'best.pt'
 Recognition = namedtuple('Recognition', ['box', 'text', 'confidence'])
 
 model = torch.load(model_path, weights_only=False)
-# model = torch.hub.load('ultralytics/yolov5', 'custom', path=model_path, force_reload=True, trust_repo=True)
-# print(model.__dict__)
-# torch.serialization.add_safe_globals([model])
-# model.load_state_dict(torch.load(weights_path))
 
 
 def detect_license_plates(image):
@@ -104,6 +100,7 @@ def get_plate_number(image) -> List[Recognition]:
     box = detect_license_plates(image)
     plate_img = extract_license_plate(image, box)
     
+    # license_plate = recognize_text_tes(plate_img)
     license_plate = [Recognition(*i) for i in recognize_text_easy(plate_img)]
     print(license_plate[0].text)
     

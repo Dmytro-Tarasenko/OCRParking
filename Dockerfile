@@ -16,7 +16,7 @@ RUN pip install poetry \
 COPY . .
 
 # Відкриваємо порт, який буде використовуватися FastAPI
-EXPOSE 8000
+EXPOSE 8080
 
 # Команда для запуску додатку
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]

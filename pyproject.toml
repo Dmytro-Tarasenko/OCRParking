@@ -1,48 +1,30 @@
 [tool.poetry]
 name = "ocrparking"
 version = "0.1.0"
-description = "Automated parking billing system powered by computer vision (car license plate recognition)"
-authors = ["Dmytro Tarasenko <ug.dotenko@gmail.com>",
-    "Sergiy Chabanchuk <chabanchuk@gmail.com>",
-    "Maksym Melnyk <maks.melnyk.94@gmail.com>",
-    "Angelika Kodlubovska <kodanzelika@gmail.com>",
-]
-license = "GNU GENERAL PUBLIC LICENSE"
+description = ""
+authors = ["Dmytro Tarasenko <ug.dotenko@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-uvicorn = "^0.30.6"
-pyjwt = "^2.9.0"
-asyncpg = "^0.29.0"
+python = "3.11.10"
 alembic = "^1.13.2"
-psycopg2-binary = "^2.9.9"
-passlib = "^1.7.4"
-python-dotenv = "^1.0.1"
-pydantic-settings = "^2.4.0"
+fastapi = "^0.115.0"
+uvicorn = "^0.30.6"
+python-jose = "^3.3.0"
 bcrypt = "^4.2.0"
+pydantic = {extras = ["email"], version = "^2.9.2"}
+numpy = "^2.1.1"
+sqlalchemy = "^2.0.35"
+torch = "^2.4.1"
+easyocr = "^1.7.1"
 opencv-python = "^4.10.0.84"
-torch = "2.0.1"
-torchvision = "0.15.2"
-pytesseract = "^0.3.13"
+pydantic-settings = "^2.5.2"
+asyncpg = "^0.29.0"
+python-multipart = "^0.0.9"
 pandas = "^2.2.2"
 requests = "^2.32.3"
-sqlalchemy = "^2.0.35"
-fastapi = "^0.115.0"
-python-jose = "^3.3.0"
-numpy = "^2.1.1"
-pydantic = "^2.9.2"
-easyocr = "^1.7.1"
+sqlalchemy-utils = "^0.41.2"
 
-
-[[tool.poetry.source]]
-name = "pytorch_cpu"
-url = "https://download.pytorch.org/whl/cpu"
-priority = "supplemental"
-
-
-[tool.poetry.group.dev.dependencies]
-ipykernel = "^6.29.5"
 
 [build-system]
 requires = ["poetry-core"]
