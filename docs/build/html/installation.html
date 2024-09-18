@@ -1,0 +1,163 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Installation &#8212; OCRParking 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/nature.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Usage" href="usage.html" />
+    <link rel="prev" title="Introduction" href="intro.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="usage.html" title="Usage"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="intro.html" title="Introduction"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">OCRParking 1.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Installation</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="installation">
+<h1>Installation<a class="headerlink" href="#installation" title="Permalink to this heading">¶</a></h1>
+<p>To install OCRParking, follow these steps:</p>
+<ol class="arabic">
+<li><p>Clone the repository:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Dmytro-Tarasenko/OCRParking.git
+</pre></div>
+</div>
+</li>
+<li><p>Navigate to the project directory:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><span class="nb">cd</span><span class="w"> </span>OCRParking
+</pre></div>
+</div>
+</li>
+<li><p>Install dependencies:</p>
+<p>If you are using <strong>Poetry</strong>, run the following command:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>poetry<span class="w"> </span>install
+</pre></div>
+</div>
+<p>If you are using <strong>pip</strong>, install dependencies from the <cite>requirements.txt</cite> file:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>-r<span class="w"> </span>requirements.txt
+</pre></div>
+</div>
+</li>
+<li><p>Set up environment variables:</p>
+<p>Copy the <cite>dev.env</cite> file to <cite>.env</cite> and fill in the required environment variables, such as <cite>JWT_SECRET_KEY</cite>, database connection details, etc.</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>cp<span class="w"> </span>dev.env<span class="w"> </span>.env
+</pre></div>
+</div>
+</li>
+<li><p>Set up the database:</p>
+<ol class="loweralpha simple">
+<li><p>Start Docker to create the necessary containers:</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>docker-compose<span class="w"> </span>up<span class="w"> </span>-d
+</pre></div>
+</div>
+<ol class="loweralpha simple" start="2">
+<li><p>Create a PostgreSQL database with the name specified in your <cite>.env</cite> file (for example, <cite>ocr_parking</cite>).</p></li>
+<li><p>Apply database migrations:</p></li>
+</ol>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>alembic<span class="w"> </span>upgrade<span class="w"> </span>head
+</pre></div>
+</div>
+</li>
+<li><p>Run the project:</p>
+<p>Start the application locally using <strong>Uvicorn</strong>:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>uvicorn<span class="w"> </span>main:app<span class="w"> </span>--reload
+</pre></div>
+</div>
+</li>
+<li><p>Access the application:</p>
+<p>Open your web browser and go to the following URL:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>http://localhost:8000
+</pre></div>
+</div>
+</li>
+</ol>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="intro.html"
+                          title="previous chapter">Introduction</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="usage.html"
+                          title="next chapter">Usage</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/installation.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="usage.html" title="Usage"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="intro.html" title="Introduction"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">OCRParking 1.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">Installation</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2024, Project Team №4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>

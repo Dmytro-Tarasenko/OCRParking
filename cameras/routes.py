@@ -30,6 +30,17 @@ router = APIRouter(prefix='/cameras',
 async def cameras_index(
     request: Request
 ) -> Any:
+    """Renders the cameras index page.
+
+        This asynchronous function handles GET requests to the root path of the cameras route.
+        It returns an HTML response rendering the 'cameras/cameras.html' template.
+
+        Args:
+            request (Request): The request object representing the current HTTP request.
+
+        Returns:
+            Any: A response object containing the rendered template and the request context.
+        """
     return templates.TemplateResponse('cameras/cameras.html',
                                       {'request': request})
 
@@ -40,6 +51,48 @@ async def post_enter_camera(
     car_plate: Annotated[UploadFile, File()],
     db: Annotated[AsyncSession, Depends(get_session)]
 ) -> Any:
+    """
+        Handle car entry through the camera system.
+
+        This endpoint processes the image of the car's license plate, checks the user's
+        registration and status, and determines whether the car should be allowed entry.
+        Depending on the result of the checks, the system raises the barrier or keeps it down.
+
+        Args:
+            request (Request): The incoming HTTP request object.
+            car_plate (UploadFile): The uploaded image file containing the car's license plate.
+            db (AsyncSession): Database session for querying the relevant data.
+
+        Returns:
+            Any: The HTML response template indicating if the barrier is raised or not.
+
+        Raises:
+            HTTPException: If there are issues with accessing or querying the database.
+
+        Process:
+            1. Reads the car plate image and extracts the plate number.
+            2. Verifies if the car is registered in the system.
+            3. Checks if the user is banned.
+            4. If the car is already parked, generates a bill and bans the user for attempting
+               to re-enter without leaving.
+            5. Logs the parking entry, generates a bill for the session, and raises the barrier.
+
+        Templates:
+            - 'cameras/turnpike_down.html': Displayed if the car is unregistered, banned,
+              or attempting unauthorized re-entry.
+            - 'cameras/turnpike_up.html': Displayed when the car passes all checks, and the
+              barrier is raised for entry.
+
+        Examples:
+            Post a request with an uploaded car plate image:
+
+            ```python
+            async def enter_camera_route():
+                form_data = {'car_plate': open('car_image.jpg', 'rb')}
+                response = await client.post('/enter', files=form_data)
+                assert response.status_code == 200
+            ```
+        """
     image = await car_plate.read()
     car_plates = get_plate_number(image)
 
@@ -139,6 +192,30 @@ async def post_leave_camera(
     car_plate: Annotated[UploadFile, File()],
     db: Annotated[AsyncSession, Depends(get_session)]
 ) -> Any:
+    """
+        Processes a car leaving the parking area.
+
+        This function receives an uploaded image from the exit camera, detects the car's
+        license plate, and performs several checks:
+        - If the car is registered in the system.
+        - If the car owner is banned.
+        - If the car's entry into the parking area was registered.
+
+        Depending on the results, it will either raise the barrier for the car to leave,
+        or deny exit with a message.
+
+        Args:
+            request (Request): The HTTP request object.
+            car_plate (UploadFile): The uploaded image file containing the car's plate.
+            db (AsyncSession): The database session for performing queries.
+
+        Returns:
+            Any: Renders an HTML template response, either allowing the car to leave or
+            returning an error message.
+
+        Raises:
+            HTTPException: If there is an issue with the database or car registration.
+        """
     image = await car_plate.read()
     car_plates = get_plate_number(image)
 
@@ -253,6 +330,18 @@ async def post_leave_camera(
 async def get_turnpike_down(
     request: Request
 ) -> Any:
+    """Renders the 'turnpike_down' HTML page.
+
+        This endpoint returns an HTML page that displays the state when the
+        turnpike is down. It uses FastAPI's template rendering system.
+
+        Args:
+            request (Request): The HTTP request object.
+
+        Returns:
+            Any: A TemplateResponse object that renders the 'turnpike_down.html'
+            template with the given request.
+        """
     return templates.TemplateResponse(
         'cameras/turnpike_down.html',
         {'request': request}

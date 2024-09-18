@@ -1,0 +1,203 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>frontend.routes &#8212; OCRParking 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nature.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">frontend.routes</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for frontend.routes</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Annotated</span>
+
+<span class="kn">from</span> <span class="nn">fastapi.routing</span> <span class="kn">import</span> <span class="n">APIRouter</span>
+<span class="kn">from</span> <span class="nn">fastapi</span> <span class="kn">import</span> <span class="n">Request</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">,</span> <span class="n">Depends</span>
+<span class="kn">from</span> <span class="nn">fastapi.templating</span> <span class="kn">import</span> <span class="n">Jinja2Templates</span>
+
+<span class="kn">from</span> <span class="nn">sqlalchemy</span> <span class="kn">import</span> <span class="n">select</span>
+<span class="kn">from</span> <span class="nn">sqlalchemy.ext.asyncio</span> <span class="kn">import</span> <span class="n">AsyncSession</span>
+
+<span class="kn">from</span> <span class="nn">db_models.db</span> <span class="kn">import</span> <span class="n">get_session</span>
+<span class="kn">from</span> <span class="nn">db_models.orms</span> <span class="kn">import</span> <span class="n">ParkingLotORM</span>
+<span class="kn">from</span> <span class="nn">auth.auth</span> <span class="kn">import</span> <span class="n">Authentication</span>
+<span class="kn">from</span> <span class="nn">schemas.auth</span> <span class="kn">import</span> <span class="n">User</span>
+<span class="kn">from</span> <span class="nn">schemas.cars</span> <span class="kn">import</span> <span class="n">ParkingLot</span>
+
+<span class="n">auth</span> <span class="o">=</span> <span class="n">Authentication</span><span class="p">()</span>
+
+<span class="n">router</span> <span class="o">=</span> <span class="n">APIRouter</span><span class="p">(</span><span class="n">include_in_schema</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="n">templates_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="vm">__file__</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span> <span class="o">/</span> <span class="s1">&#39;templates&#39;</span>
+
+<span class="n">templates</span> <span class="o">=</span> <span class="n">Jinja2Templates</span><span class="p">(</span><span class="n">directory</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">templates_path</span><span class="p">))</span>
+
+
+<div class="viewcode-block" id="index"><a class="viewcode-back" href="../../modules.html#frontend.routes.index">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">index</span><span class="p">(</span>
+    <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+    <span class="n">db</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)],</span>
+    <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Render the index page.</span>
+
+<span class="sd">        This route handles rendering the index page. If an access token is present</span>
+<span class="sd">        in the cookies, it extracts the current user and passes the user information</span>
+<span class="sd">        to the template. Otherwise, the user will be `None`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+<span class="sd">            db (AsyncSession): The database session for handling database operations.</span>
+<span class="sd">            access_token (str | None, optional): The access token stored in cookies.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: The rendered &#39;index.html&#39; template with the request and user data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="n">username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;index.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+                                                     <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="n">user</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="about"><a class="viewcode-back" href="../../modules.html#frontend.routes.about">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;/about&#39;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">about</span><span class="p">(</span>
+    <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+    <span class="n">access_token</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span> <span class="n">Cookie</span><span class="p">()]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Render the about page.</span>
+
+<span class="sd">        This route handles rendering the about page. If an access token is present</span>
+<span class="sd">        in the cookies, it extracts the current user and passes the user information</span>
+<span class="sd">        to the template. Otherwise, the user will be `None`.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+<span class="sd">            access_token (str | None, optional): The access token stored in cookies.</span>
+<span class="sd">                Defaults to None.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: The rendered &#39;about.html&#39; template with the request and user data.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">user</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">access_token</span><span class="p">:</span>
+        <span class="n">username</span> <span class="o">=</span> <span class="n">auth</span><span class="o">.</span><span class="n">get_current_user</span><span class="p">(</span><span class="n">request</span><span class="p">)</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span><span class="s1">&#39;about.html&#39;</span><span class="p">,</span> <span class="p">{</span><span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+                                                     <span class="s1">&#39;user&#39;</span><span class="p">:</span> <span class="n">user</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="get_parking_lots"><a class="viewcode-back" href="../../modules.html#frontend.routes.get_parking_lots">[docs]</a><span class="nd">@router</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;/parking_lots&#39;</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span> <span class="nf">get_parking_lots</span><span class="p">(</span>
+    <span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span>
+    <span class="n">db</span><span class="p">:</span> <span class="n">Annotated</span><span class="p">[</span><span class="n">AsyncSession</span><span class="p">,</span> <span class="n">Depends</span><span class="p">(</span><span class="n">get_session</span><span class="p">)]</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Fetches and returns parking lot information, including occupied, free, and total spaces.</span>
+
+<span class="sd">        The function retrieves all parking lots from the database, processes the data,</span>
+<span class="sd">        and calculates the number of free and occupied parking spaces. It returns</span>
+<span class="sd">        an HTML response with the template &#39;lots.html&#39; and the parking information.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            request (Request): The HTTP request object.</span>
+<span class="sd">            db (Annotated[AsyncSession, Depends]): The database session to execute the queries.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            TemplateResponse: An HTML response with the parking lot information</span>
+<span class="sd">            (total spaces, free spaces, occupied spaces) and a list of parking lots.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">ParkingLotORM</span><span class="p">)</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">ParkingLotORM</span><span class="o">.</span><span class="n">id</span><span class="p">)</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">lots_db</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="n">lots_info</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">lot</span> <span class="ow">in</span> <span class="n">lots_db</span><span class="p">:</span>
+        <span class="n">entry</span> <span class="o">=</span> <span class="n">ParkingLot</span><span class="o">.</span><span class="n">model_validate</span><span class="p">(</span><span class="n">lot</span><span class="p">)</span>
+        <span class="n">lots_info</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">entry</span><span class="p">)</span>
+    
+    <span class="n">stmnt</span> <span class="o">=</span> <span class="n">select</span><span class="p">(</span><span class="n">ParkingLotORM</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ParkingLotORM</span><span class="o">.</span><span class="n">car_id</span><span class="o">.</span><span class="n">is_not</span><span class="p">(</span><span class="kc">None</span><span class="p">))</span>
+    <span class="n">res</span> <span class="o">=</span> <span class="k">await</span> <span class="n">db</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">stmnt</span><span class="p">)</span>
+    <span class="n">occupied</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">scalars</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">())</span>
+    <span class="n">free</span> <span class="o">=</span> <span class="mi">30</span> <span class="o">-</span> <span class="n">occupied</span>
+    <span class="n">total</span> <span class="o">=</span> <span class="mi">30</span>
+
+    <span class="k">return</span> <span class="n">templates</span><span class="o">.</span><span class="n">TemplateResponse</span><span class="p">(</span>
+        <span class="s1">&#39;lots.html&#39;</span><span class="p">,</span>
+        <span class="p">{</span>
+            <span class="s1">&#39;request&#39;</span><span class="p">:</span> <span class="n">request</span><span class="p">,</span>
+            <span class="s1">&#39;lots&#39;</span><span class="p">:</span> <span class="n">lots_info</span><span class="p">,</span>
+            <span class="s1">&#39;occupied&#39;</span><span class="p">:</span> <span class="n">occupied</span><span class="p">,</span>
+            <span class="s1">&#39;free&#39;</span><span class="p">:</span> <span class="n">free</span><span class="p">,</span>
+            <span class="s1">&#39;total&#39;</span><span class="p">:</span> <span class="n">total</span>
+        <span class="p">}</span>
+    <span class="p">)</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">frontend.routes</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2024, Project Team №4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>

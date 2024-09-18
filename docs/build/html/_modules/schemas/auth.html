@@ -1,0 +1,151 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>schemas.auth &#8212; OCRParking 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/nature.css" />
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">schemas.auth</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for schemas.auth</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">pydantic</span> <span class="kn">import</span> <span class="n">BaseModel</span><span class="p">,</span> <span class="n">EmailStr</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span>
+
+
+<div class="viewcode-block" id="Token"><a class="viewcode-back" href="../../modules.html#schemas.auth.Token">[docs]</a><span class="k">class</span> <span class="nc">Token</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Represents the token model containing access and refresh tokens.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            access_token (str): The JWT access token for user authentication.</span>
+<span class="sd">            refresh_token (str): The JWT refresh token used for renewing the access token.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">access_token</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">refresh_token</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+<div class="viewcode-block" id="TokenData"><a class="viewcode-back" href="../../modules.html#schemas.auth.TokenData">[docs]</a><span class="k">class</span> <span class="nc">TokenData</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Represents data associated with a token, such as the username.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            username (Optional[str]): The username associated with the token, default is None.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="User"><a class="viewcode-back" href="../../modules.html#schemas.auth.User">[docs]</a><span class="k">class</span> <span class="nc">User</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Represents a user in the system.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            username (str): The username of the user.</span>
+<span class="sd">            email (Optional[str]): The email address of the user, default is None.</span>
+<span class="sd">            is_admin (bool): Whether the user has admin privileges, default is False.</span>
+<span class="sd">            is_banned (bool): Whether the user is banned from the system, default is False.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">email</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">is_admin</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
+    <span class="n">is_banned</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span></div>
+
+
+<div class="viewcode-block" id="UserInDB"><a class="viewcode-back" href="../../modules.html#schemas.auth.UserInDB">[docs]</a><span class="k">class</span> <span class="nc">UserInDB</span><span class="p">(</span><span class="n">User</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Represents a user stored in the database, with the hashed password.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            hashed_password (str): The hashed password of the user.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">hashed_password</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+<div class="viewcode-block" id="UserCreate"><a class="viewcode-back" href="../../modules.html#schemas.auth.UserCreate">[docs]</a><span class="k">class</span> <span class="nc">UserCreate</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Represents the data required to create a new user.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            username (str): The username of the new user.</span>
+<span class="sd">            email (EmailStr): The email address of the new user.</span>
+<span class="sd">            password (str): The password of the new user.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">email</span><span class="p">:</span> <span class="n">EmailStr</span>
+    <span class="n">password</span><span class="p">:</span> <span class="nb">str</span></div>
+
+
+<div class="viewcode-block" id="UserLogin"><a class="viewcode-back" href="../../modules.html#schemas.auth.UserLogin">[docs]</a><span class="k">class</span> <span class="nc">UserLogin</span><span class="p">(</span><span class="n">BaseModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Represents the data required for a user to log in.</span>
+
+<span class="sd">        Attributes:</span>
+<span class="sd">            username (str): The username of the user.</span>
+<span class="sd">            password (str): The password of the user.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    <span class="n">username</span><span class="p">:</span> <span class="nb">str</span>
+    <span class="n">password</span><span class="p">:</span> <span class="nb">str</span></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">OCRParking 1.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">schemas.auth</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2024, Project Team №4.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.0.2.
+    </div>
+  </body>
+</html>

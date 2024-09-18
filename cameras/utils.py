@@ -19,6 +19,15 @@ from db_models.orms import (
 
 
 async def is_user(plate: str, db: AsyncSession) -> bool:
+    """Check if a car with the given license plate exists in the database.
+
+        Args:
+            plate (str): The license plate of the car.
+            db (AsyncSession): The database session to execute the query.
+
+        Returns:
+            bool: True if the car exists, False otherwise.
+        """
 
     stmnt = select(CarORM).where(CarORM.car_plate == plate)
     res = await db.execute(stmnt)
@@ -30,6 +39,15 @@ async def is_user(plate: str, db: AsyncSession) -> bool:
 
 
 async def is_banned(plate: str, db: AsyncSession) -> bool:
+    """Check if the owner of a car with the given license plate is banned.
+
+        Args:
+            plate (str): The license plate of the car.
+            db (AsyncSession): The database session to execute the query.
+
+        Returns:
+            bool: True if the owner is banned, False otherwise.
+        """
 
     stmnt = (
         select(CarORM).filter(CarORM.car_plate == plate)
@@ -44,6 +62,15 @@ async def is_banned(plate: str, db: AsyncSession) -> bool:
 
 
 async def is_creditable(plate: str, db: AsyncSession) -> bool:
+    """Check if the owner of a car with the given license plate is an admin and can be credited.
+
+        Args:
+            plate (str): The license plate of the car.
+            db (AsyncSession): The database session to execute the query.
+
+        Returns:
+            bool: True if the owner is an admin and can be credited, False otherwise.
+        """
 
     async with get_session() as session:
         stmnt = select(CarORM).filter(CarORM.car_plate == plate) \
@@ -58,6 +85,19 @@ async def is_creditable(plate: str, db: AsyncSession) -> bool:
 
 async def get_tariff_for_date(date: datetime.date,
                               db: AsyncSession) -> float:
+    """Fetches the tariff for a specific date.
+
+        This function retrieves the tariff from the `TariffORM` table that was
+        set on or before the specified date. It orders the tariffs by `set_date`
+        in descending order to get the latest tariff up to that date.
+
+        Args:
+            date (datetime.date): The date to find the tariff for.
+            db (AsyncSession): The asynchronous database session.
+
+        Returns:
+            float: The tariff value for the specified date.
+        """
     stmnt = (
         select(TariffORM)
         .where(TariffORM.set_date <= date)
@@ -71,6 +111,19 @@ async def get_tariff_for_date(date: datetime.date,
 
 async def get_credit_limit_for_date(date: datetime.date,
                                     db: AsyncSession) -> float:
+    """Fetches the credit limit for a specific date.
+
+        This function retrieves the credit limit from the `CreditLimitsORM` table
+        that was set on or before the specified date. It orders the limits by `set_date`
+        in descending order to get the latest limit up to that date.
+
+        Args:
+            date (datetime.date): The date to find the credit limit for.
+            db (AsyncSession): The asynchronous database session.
+
+        Returns:
+            float: The credit limit for the specified date.
+        """
     stmnt = (
         select(CreditLimitsORM)
         .where(CreditLimitsORM.set_date <= date)
@@ -83,6 +136,21 @@ async def get_credit_limit_for_date(date: datetime.date,
 
 
 async def set_unleaved_ban(car: CarORM, db: AsyncSession) -> int:
+    """Sets a ban for a car that has not left the parking area.
+
+        This function marks the end time of a parking session for the specified car
+        if no end time is currently set (i.e., the car has not left). It calculates
+        the parking cost based on the tariff applicable at the start time and
+        marks the bill as sent and the user as banned. The user's account is
+        updated accordingly.
+
+        Args:
+            car (CarORM): The car object representing the vehicle to be banned.
+            db (AsyncSession): The asynchronous database session.
+
+        Returns:
+            int: The bill ID of the updated parking session.
+        """
     stmnt = (
         select(ParkingHistoryORM)
         .where(
@@ -116,6 +184,16 @@ async def set_unleaved_ban(car: CarORM, db: AsyncSession) -> int:
 
 
 async def set_unparked_ban(car: CarORM, db: AsyncSession) -> int:
+    """
+        Imposes a ban on a car if it has unpaid bills for more than 30 days, applies a fine, and updates the car's ban status.
+
+        Args:
+            car (CarORM): The car object for which the ban is being applied.
+            db (AsyncSession): The database session used for querying and updating records.
+
+        Returns:
+            int: The ID of the bill generated for the fine.
+        """
     date_limit = datetime.today().date() - timedelta(days=30)
     end_time = datetime.now() - timedelta(minutes=59)
     start_time = end_time - timedelta(hours=1)
@@ -172,6 +250,18 @@ async def send_ban_message(user_id: int,
                            bill_id: int,
                            ban_message: str,
                            db: AsyncSession) -> int:
+    """
+        Sends a ban notification to the user with a specific bill ID.
+
+        Args:
+            user_id (int): The ID of the user to whom the message is being sent.
+            bill_id (int): The ID of the bill associated with the ban.
+            ban_message (str): The message content to be sent, with details about the ban.
+            db (AsyncSession): The database session used for querying and updating records.
+
+        Returns:
+            int: The ID of the generated message.
+        """
     stmnt = select(BillingORM).where(BillingORM.id == bill_id)
     res = await db.execute(stmnt)
     bill = res.scalar_one()
@@ -194,6 +284,17 @@ async def send_ban_message(user_id: int,
 async def send_message(user_id: int,
                        bill_id: int,
                        db: AsyncSession) -> int:
+    """
+        Sends a message to the user regarding the payment of a specific bill.
+
+        Args:
+            user_id (int): The ID of the user to whom the message is being sent.
+            bill_id (int): The ID of the bill associated with the message.
+            db (AsyncSession): The database session used for querying and updating records.
+
+        Returns:
+            int: The ID of the generated message.
+        """
     stmnt = (
         select(BillingORM)
         .where(BillingORM.id == bill_id)
@@ -229,6 +330,16 @@ async def occupy_lot(
         car_id: int,
         db: AsyncSession
 ) -> None:
+    """
+        Occupies a free parking lot with a specific car ID.
+
+        Args:
+            car_id (int): The ID of the car that will occupy the lot.
+            db (AsyncSession): The database session used for querying and updating records.
+
+        Returns:
+            None
+        """
     stmnt = select(ParkingLotORM).where(ParkingLotORM.car_id.is_(None))
     res = await db.execute(stmnt)
     free_lots = res.scalars().all()
@@ -249,6 +360,16 @@ async def free_lot(
         car_id: int,
         db: AsyncSession
 ) -> None:
+    """
+        Frees a parking lot by removing the associated car ID.
+
+        Args:
+            car_id (int): The ID of the car currently occupying the lot.
+            db (AsyncSession): The database session used for querying and updating records.
+
+        Returns:
+            None
+        """
     stmnt = select(ParkingLotORM).where(ParkingLotORM.car_id == car_id)
     res = await db.execute(stmnt)
     lot = res.scalar()

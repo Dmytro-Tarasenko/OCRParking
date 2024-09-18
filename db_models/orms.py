@@ -227,6 +227,16 @@ class CreditLimitsORM(BaseORM):
 
 
 class ParkingLotORM(BaseORM):
+    """
+       ORM model representing the parking lots in the database.
+
+       This class defines the schema for the `parking_lots` table, which contains
+       the information related to parking lots and their association with cars.
+
+       Attributes:
+           id (int): The primary key for the parking lot.
+           car_id (int, optional): The foreign key referencing the car parked in this lot.
+       """
     __tablename__ = 'parking_lots'
 
     id: Mapped[int] = mapped_column(primary_key=True)

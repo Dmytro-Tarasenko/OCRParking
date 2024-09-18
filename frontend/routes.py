@@ -86,6 +86,21 @@ async def get_parking_lots(
     request: Request,
     db: Annotated[AsyncSession, Depends(get_session)]
 ) -> Any:
+    """
+        Fetches and returns parking lot information, including occupied, free, and total spaces.
+
+        The function retrieves all parking lots from the database, processes the data,
+        and calculates the number of free and occupied parking spaces. It returns
+        an HTML response with the template 'lots.html' and the parking information.
+
+        Args:
+            request (Request): The HTTP request object.
+            db (Annotated[AsyncSession, Depends]): The database session to execute the queries.
+
+        Returns:
+            TemplateResponse: An HTML response with the parking lot information
+            (total spaces, free spaces, occupied spaces) and a list of parking lots.
+        """
     stmnt = select(ParkingLotORM).order_by(ParkingLotORM.id)
     res = await db.execute(stmnt)
     lots_db = res.scalars().all()
