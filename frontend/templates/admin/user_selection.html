@@ -1,5 +1,8 @@
 {% block content %}
-<h2>Оберіть користувача для перегляду статистики</h2>
+<div class="container mt5">
+    <div calss="card">
+        <div class="card-body">
+<h2 class="card-title">Оберіть користувача для перегляду статистики</h2>
 
 <form action="{{ url_for('get_user_stats') }}" method="get">
     <label for="username">Користувачі:</label>
@@ -10,5 +13,5 @@
         {% endfor %}
     </select>
 </form>
-
+</div></div></div>
 {% endblock %}

@@ -126,10 +126,10 @@ async def login(response: Response,
     user_login = UserLogin(username=username,
                            password=password)
     result = await auth.login(response, user_login, db)
-    if not result:
+    if error := result.get('msg'):
         return templates.TemplateResponse('auth/login_form.html',
                                           context={'request': request,
-                                                   'error': 'User not found or invalid credentials'})
+                                                   'error': error})
     user = User(username=username)
     # ret = templates.TemplateResponse('user/user.html',
     #                                  {'request': request,

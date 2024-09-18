@@ -1,11 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-        <div>
-          <div class="parking-info">
-            <h2 class="parking-title">Паркомісця</h2>
-            <p class="parking-status">вільні 15 з 30</p>
-        </div>
-        <div id="turnpike" class="barrier-info"
+        <div id="turnpike" class="barrier-info container"
         hx-get="{{url_for('get_turnpike_down')}}"
         hx-swap="innerHTML"
         hx-trigger="load"

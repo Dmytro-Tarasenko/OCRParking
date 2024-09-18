@@ -1,6 +1,6 @@
 {% extends "admin/admin_base.html" %}
 {% block admin_content %}
-<h1>Управління статистикою</h1>
+<h1 class="section-title">Управління статистикою</h1>
 
 <!-- Блок загальної статистики по паркуванню -->
 <section>
@@ -17,12 +17,6 @@
 <!-- Статистика автомобілів -->
 <section>
     <div hx-get="{{ url_for('car_selection') }}" hx-trigger="load" hx-swap="innerHTML">
-    </div>
-</section>
-
-<!-- Статистика активних користувачів -->
-<section>
-    <div hx-get="{{ url_for('get_active_users_stats') }}" hx-trigger="load" hx-swap="innerHTML">
     </div>
 </section>
 
@@ -53,18 +47,6 @@
 <!-- Середня тривалість паркування -->
 <section>
     <div hx-get="{{ url_for('get_average_parking_duration_stats') }}" hx-trigger="load" hx-swap="innerHTML">
-    </div>
-</section>
-
-<!-- Кількість паркувань -->
-<section>
-    <div hx-get="{{ url_for('get_parking_count_stats') }}" hx-trigger="load" hx-swap="innerHTML">
-    </div>
-</section>
-
-<!-- Кількість вільних місць -->
-<section>
-    <div hx-get="{{ url_for('get_available_spots_stats') }}" hx-trigger="load" hx-swap="innerHTML">
     </div>
 </section>
 
