@@ -8,6 +8,8 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock ./
 
 # Встановлюємо Poetry та залежності
+RUN apt-get update
+RUN apt-get install ffmpeg libsm6 libxext6  -y
 RUN pip install poetry \
     && poetry config virtualenvs.create false \
     && poetry install --no-root
