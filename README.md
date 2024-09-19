@@ -17,13 +17,17 @@ models, a FastAPI backend, and a user-friendly frontend to manage parking operat
 - Machine Learning for OCR: Uses trained models for license plate recognition to identify vehicles.
 - Dockerized Deployment: Fully containerized setup with Docker and Docker Compose.
 
+## Docker image build command
+
+To build docker image ready to run `docker compose up` type following command:
+`docker build -t ocrparking-goit:stage1 .`
+
 ## Project Structure
 
 ### Root Directory
 
 - `Dockerfile`: Docker configuration for the project.
 - `LICENSE`: License for the project.
-- `Project_ocrparking_6.ipynb`: Jupyter notebook for documentation and experiments.
 - `settings.py`: Project settings and configurations.
 
 ### Folders
