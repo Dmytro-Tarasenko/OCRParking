@@ -2,7 +2,12 @@
 name = "ocrparking"
 version = "0.1.0"
 description = ""
-authors = ["Dmytro Tarasenko <ug.dotenko@gmail.com>"]
+authors = ["Dmytro Tarasenko <ug.dotenko@gmail.com>",
+    "Sergiy Chabanchuk <chabanchuk@gmail.com>",
+    "Maksym Melnyk <maks.melnyk.94@gmail.com>",
+    "Angelika Kodlubovska <kodanzelika@gmail.com>",
+]
+license = "GNU GENERAL PUBLIC LICENSE"
 readme = "README.md"
 
 [tool.poetry.dependencies]
